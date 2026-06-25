@@ -58,3 +58,22 @@ export function formatCreatorKeyPriceDisplay(
 ): string {
 	return formatDisplayKeyPrice(resolveCreatorKeyPriceStroops(creator));
 }
+
+/**
+ * Formats a key price in stroops (bigint) to XLM with proper decimal precision.
+ * Always displays 2 decimal places for prices >= 1 XLM, and 4 decimal places for prices < 1 XLM.
+ */
+export function formatKeyPrice(stroops: bigint): string {
+	const STROOPS_PER_XLM_BI = 10_000_000n;
+	const isBelowOneXlm = stroops < STROOPS_PER_XLM_BI;
+	const decimals = isBelowOneXlm ? 4 : 2;
+
+	const xlm = Number(stroops) / 10_000_000;
+	const formattedValue = formatNumber(xlm, {
+		minimumFractionDigits: decimals,
+		maximumFractionDigits: decimals,
+	});
+
+	return `${formattedValue} XLM`;
+}
+
