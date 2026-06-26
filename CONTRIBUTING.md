@@ -91,6 +91,7 @@ The repository also uses Husky plus `lint-staged` to run lightweight checks on s
 - Do not reintroduce old template-era pages or branding.
 - Prefer accessible, keyboard-friendly UI behavior.
 - Keep new routes focused and incremental until the main marketplace flows land.
+- See [docs/adding-page-routes.md](./docs/adding-page-routes.md) for how to register a new page, the file naming convention, and the recommended pattern for auth-protected routes.
 
 ### Folder structure
 
