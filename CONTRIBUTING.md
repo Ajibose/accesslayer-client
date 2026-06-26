@@ -92,6 +92,42 @@ The repository also uses Husky plus `lint-staged` to run lightweight checks on s
 - Prefer accessible, keyboard-friendly UI behavior.
 - Keep new routes focused and incremental until the main marketplace flows land.
 
+### Folder structure
+
+- `pages/`: Route-level components (each file maps to a route)
+- `components/`: Reusable UI components and shared component logic
+  - `components/common/`: Application-specific reusable components
+  - `components/ui/`: Low-level UI primitives (from shadcn/ui or similar)
+  - `components/home/`: Home/landing-page specific components
+- `hooks/`: Custom React hooks
+- `utils/` or `lib/`: Pure helper functions and utilities
+- `constants/`: Application constants
+- `contracts/`: Web3 contract ABIs and related logic
+- `assets/`: Static assets (images, icons, etc.)
+
+### Naming conventions
+
+- **Components**: PascalCase (e.g., `CreatorCard.tsx`, `ConnectWalletButton.tsx`)
+- **Hooks**: camelCase, prefixed with `use` (e.g., `useCopySuccessAnnouncement.ts`, `useNetworkMismatch.ts`)
+- **Utilities/helpers**: camelCase (e.g., `formatNumber.ts`)
+- **Constants**: UPPER_SNAKE_CASE (e.g., `MAX_KEY_SUPPLY`)
+
+### Components vs pages: decision guide
+
+Use `pages/` when:
+- The component is a top-level route or page entry point
+- It represents a distinct URL path in the application
+
+Use `components/` when:
+- The component is reusable across multiple pages or routes
+- It's a self-contained UI piece with a single responsibility
+- It can be tested independently of route context
+
+Keep components co-located in a page file only when:
+- They are used exclusively within that single page
+- They are small, helper components that don't make sense outside the page context
+- Extracting them would add unnecessary indirection
+
 ## Good first issue guidance
 
 Issues labeled `good first issue` should:
