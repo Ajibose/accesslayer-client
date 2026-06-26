@@ -477,7 +477,7 @@ function LandingPage() {
 				setFetchRetryAttempt(0);
 				setCreators(DEMO_CREATORS);
 			} finally {
-				setTimeout(() => setIsLoading(false), 800);
+				setIsLoading(false);
 			}
 		};
 
