@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useDebounce } from '@/hooks/useDebounce';
 import { LayoutGroup, motion } from 'framer-motion';
 import { useSearchParams } from 'react-router';
 import { courseService, type Course } from '@/services/course.service';
@@ -283,6 +284,7 @@ function LandingPage() {
 	const [isFilterLoading, setIsFilterLoading] = useState(false);
 	const [searchParams, setSearchParams] = useSearchParams();
 	const [searchQuery, setSearchQuery] = useState('');
+	const debouncedSearchQuery = useDebounce(searchQuery, 300);
 	const searchQueryRef = useRef<string>('');
 	const sortOptionRef = useRef<SortOption>('featured');
 	const PROFILE_TABS = ['overview', 'creations', 'collectors', 'activity'];
@@ -447,7 +449,10 @@ function LandingPage() {
 			setShowRetryBanner(false);
 			setFinalFetchError('');
 			try {
-				const data = await courseService.getCourses();
+				const params = debouncedSearchQuery.trim()
+					? { search: debouncedSearchQuery.trim() }
+					: undefined;
+				const data = await courseService.getCourses(params);
 				if (data && data.length > 0) {
 					setCreators(data);
 				} else {
@@ -482,7 +487,7 @@ function LandingPage() {
 		};
 
 		fetchCreators();
-	}, [fetchRetryAttempt, fetchRequestId]);
+	}, [fetchRetryAttempt, fetchRequestId, debouncedSearchQuery]);
 
 	const searchSuggestions = useMemo(() => {
 		const fromCategories = creators
