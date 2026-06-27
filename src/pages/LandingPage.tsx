@@ -62,6 +62,7 @@ import {
 } from '@/utils/portfolioValue.utils';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { CREATOR_LIST_SORT_LAYOUT_TRANSITION } from '@/utils/creatorListSortTransition';
+import { creatorListKey } from '@/utils/creatorListKey.utils';
 import { AlertCircle, ChevronDown, RefreshCw } from 'lucide-react';
 import ClearedFiltersEmptyState from '@/components/common/ClearedFiltersEmptyState';
 import CreatorListPagination from '@/components/common/CreatorListPagination';
@@ -228,6 +229,15 @@ const isCreatorRefreshShortcut = (event: KeyboardEvent) =>
 	!event.shiftKey &&
 	event.key.toLowerCase() === 'r';
 
+const toPriceFilterValue = (value: string) => {
+	if (!value.trim()) return undefined;
+	const parsed = Number(value);
+	return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+};
+
+const getCreatorListKey = (creator: Course) =>
+	creatorListKey(Number(creator.id));
+
 type SortOption = 'featured' | 'price-asc' | 'price-desc' | 'supply-desc';
 
 interface CreatorProfileLoadErrorProps {
@@ -283,6 +293,8 @@ function LandingPage() {
 	const [isFilterLoading, setIsFilterLoading] = useState(false);
 	const [searchParams, setSearchParams] = useSearchParams();
 	const [searchQuery, setSearchQuery] = useState('');
+	const [minPriceFilter, setMinPriceFilter] = useState('');
+	const [maxPriceFilter, setMaxPriceFilter] = useState('');
 	const searchQueryRef = useRef<string>('');
 	const sortOptionRef = useRef<SortOption>('featured');
 	const PROFILE_TABS = ['overview', 'creations', 'collectors', 'activity'];
@@ -299,7 +311,10 @@ function LandingPage() {
 	const prefersReducedMotion = usePrefersReducedMotion();
 	const [sortOption, setSortOption] = useState<SortOption>(() => {
 		const sort = searchParams.get('sort') as SortOption | null;
-		if (sort && ['featured', 'price-asc', 'price-desc', 'supply-desc'].includes(sort)) {
+		if (
+			sort &&
+			['featured', 'price-asc', 'price-desc', 'supply-desc'].includes(sort)
+		) {
 			sortOptionRef.current = sort;
 			return sort;
 		}
@@ -386,7 +401,13 @@ function LandingPage() {
 			setSearchQuery('');
 		}
 		const sort = searchParams.get('sort') as SortOption | null;
-		if (sort && ['featured', 'price-asc', 'price-desc', 'supply-desc'].includes(sort) && sort !== sortOptionRef.current) {
+		if (
+			sort &&
+			['featured', 'price-asc', 'price-desc', 'supply-desc'].includes(
+				sort
+			) &&
+			sort !== sortOptionRef.current
+		) {
 			setSortOption(sort);
 		} else if (sort === null && sortOptionRef.current !== 'featured') {
 			setSortOption('featured');
@@ -447,7 +468,15 @@ function LandingPage() {
 			setShowRetryBanner(false);
 			setFinalFetchError('');
 			try {
-				const data = await courseService.getCourses();
+				const minPrice = toPriceFilterValue(minPriceFilter);
+				const maxPrice = toPriceFilterValue(maxPriceFilter);
+				const params = {
+					...(minPrice !== undefined ? { min_price: minPrice } : {}),
+					...(maxPrice !== undefined ? { max_price: maxPrice } : {}),
+				};
+				const data = await courseService.getCourses(
+					Object.keys(params).length > 0 ? params : undefined
+				);
 				if (data && data.length > 0) {
 					setCreators(data);
 				} else {
@@ -458,6 +487,11 @@ function LandingPage() {
 				setCreatorsFetchedAt(Date.now());
 				setFetchRetryAttempt(0);
 			} catch {
+				if (fetchRetryAttempt === 0) {
+					showToast.error(
+						'Unable to load creators. Check your connection and try again.'
+					);
+				}
 				if (fetchRetryAttempt < MAX_CREATOR_FETCH_RETRIES) {
 					const nextAttempt = fetchRetryAttempt + 1;
 					setShowRetryBanner(true);
@@ -482,7 +516,7 @@ function LandingPage() {
 		};
 
 		fetchCreators();
-	}, [fetchRetryAttempt, fetchRequestId]);
+	}, [fetchRetryAttempt, fetchRequestId, maxPriceFilter, minPriceFilter]);
 
 	const searchSuggestions = useMemo(() => {
 		const fromCategories = creators
@@ -581,6 +615,10 @@ function LandingPage() {
 	};
 
 	const handleResetSearch = () => setSearchQuery('');
+	const handleClearPriceFilters = () => {
+		setMinPriceFilter('');
+		setMaxPriceFilter('');
+	};
 
 	const handleRetryCreatorFetch = useCallback(() => {
 		setFinalFetchError('');
@@ -824,6 +862,57 @@ function LandingPage() {
 									</option>
 								</select>
 							</div>
+							<div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
+								<div>
+									<label
+										htmlFor="min-price"
+										className="marketplace-label-muted text-xs font-semibold uppercase tracking-[0.16em]"
+									>
+										Min price
+									</label>
+									<input
+										id="min-price"
+										type="number"
+										min="0"
+										step="0.01"
+										inputMode="decimal"
+										value={minPriceFilter}
+										onChange={event =>
+											setMinPriceFilter(event.target.value)
+										}
+										className="mt-1 h-10 w-full rounded-lg border border-white/15 bg-slate-950/80 px-3 text-sm text-white outline-none focus:border-amber-400/60"
+									/>
+								</div>
+								<div>
+									<label
+										htmlFor="max-price"
+										className="marketplace-label-muted text-xs font-semibold uppercase tracking-[0.16em]"
+									>
+										Max price
+									</label>
+									<input
+										id="max-price"
+										type="number"
+										min="0"
+										step="0.01"
+										inputMode="decimal"
+										value={maxPriceFilter}
+										onChange={event =>
+											setMaxPriceFilter(event.target.value)
+										}
+										className="mt-1 h-10 w-full rounded-lg border border-white/15 bg-slate-950/80 px-3 text-sm text-white outline-none focus:border-amber-400/60"
+									/>
+								</div>
+								<Button
+									type="button"
+									variant="outline"
+									onClick={handleClearPriceFilters}
+									disabled={!minPriceFilter && !maxPriceFilter}
+									className="h-10 rounded-lg border-white/10 bg-white/5 px-4 text-xs font-bold uppercase tracking-[0.16em] text-white"
+								>
+									Clear
+								</Button>
+							</div>
 							<div
 								aria-label={`${CREATOR_REFRESH_SHORTCUT_LABEL} refreshes creator list data`}
 								className="flex flex-wrap items-center gap-2 text-xs text-white/55"
@@ -831,7 +920,10 @@ function LandingPage() {
 								<span className="font-semibold uppercase tracking-[0.16em] text-white/40">
 									Shortcut
 								</span>
-								<span className="inline-flex items-center gap-1" aria-hidden="true">
+								<span
+									className="inline-flex items-center gap-1"
+									aria-hidden="true"
+								>
 									<Kbd className="border border-white/10 bg-white/10 text-white/70">
 										Ctrl/Cmd
 									</Kbd>
@@ -857,6 +949,23 @@ function LandingPage() {
 								className="mb-7"
 								supportingTextClassName="max-w-3xl"
 							/>
+							{showRetryBanner && (
+								<TransactionRetryNotice
+									title="Loading live creators"
+									message={getFetchRetryHelperCopy(
+										fetchRetryAttempt + 1,
+										MAX_CREATOR_FETCH_RETRIES + 1
+									)}
+									retryLabel={FETCH_RETRY_ACTION_LABEL}
+									onRetry={handleRetryCreatorFetch}
+									className="mb-6"
+								/>
+							)}
+							{finalFetchError && (
+								<div className="mb-6 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+									{finalFetchError}
+								</div>
+							)}
 
 							{isLoading ? (
 								<CreatorGridSkeleton count={6} />
@@ -871,7 +980,7 @@ function LandingPage() {
 									<div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 opacity-50">
 										{pagedCreators.map(creator => (
 											<CreatorCard
-												key={creator.id}
+												key={getCreatorListKey(creator)}
 												creator={creator}
 												isPriceRefreshing={isPriceRefreshing}
 											/>
@@ -880,22 +989,6 @@ function LandingPage() {
 								</div>
 							) : filteredCreators.length > 0 ? (
 								<div className="space-y-4">
-									{showRetryBanner && (
-										<TransactionRetryNotice
-											title="Loading live creators"
-											message={getFetchRetryHelperCopy(
-												fetchRetryAttempt + 1,
-												MAX_CREATOR_FETCH_RETRIES + 1
-											)}
-											retryLabel={FETCH_RETRY_ACTION_LABEL}
-											onRetry={handleRetryCreatorFetch}
-										/>
-									)}
-									{finalFetchError && (
-										<div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-											{finalFetchError}
-										</div>
-									)}
 									{/* #301: subtle inline stale-data warning that
 									appears once the cached creator data is past
 									the 60s freshness window. The hook drives a
@@ -918,7 +1011,7 @@ function LandingPage() {
 													// helper no-ops on prefers-reduced-motion.
 													// #355: layout transition when sort order changes.
 													<motion.div
-														key={creator.id}
+														key={getCreatorListKey(creator)}
 														layout={!prefersReducedMotion}
 														transition={
 															CREATOR_LIST_SORT_LAYOUT_TRANSITION
@@ -930,14 +1023,20 @@ function LandingPage() {
 													>
 														<CreatorCard
 															creator={creator}
-															isPriceRefreshing={isPriceRefreshing}
+															isPriceRefreshing={
+																isPriceRefreshing
+															}
 														/>
 													</motion.div>
 												))}
 
 											{/* Separator between pinned and unpinned */}
-											{pagedCreators.some(creator => creator.isPinned) &&
-												pagedCreators.some(creator => !creator.isPinned) && (
+											{pagedCreators.some(
+												creator => creator.isPinned
+											) &&
+												pagedCreators.some(
+													creator => !creator.isPinned
+												) && (
 													<CreatorListGroupSeparator label="Other creators" />
 												)}
 
@@ -946,7 +1045,7 @@ function LandingPage() {
 												.filter(creator => !creator.isPinned)
 												.map((creator, index) => (
 													<motion.div
-														key={creator.id}
+														key={getCreatorListKey(creator)}
 														layout={!prefersReducedMotion}
 														transition={
 															CREATOR_LIST_SORT_LAYOUT_TRANSITION
@@ -958,7 +1057,9 @@ function LandingPage() {
 													>
 														<CreatorCard
 															creator={creator}
-															isPriceRefreshing={isPriceRefreshing}
+															isPriceRefreshing={
+																isPriceRefreshing
+															}
 														/>
 													</motion.div>
 												))}

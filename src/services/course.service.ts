@@ -30,6 +30,8 @@ export interface GetCoursesParams {
 	limit?: number;
 	category?: string;
 	search?: string;
+	min_price?: number;
+	max_price?: number;
 }
 
 class CourseService extends BaseApiService {
