@@ -159,6 +159,7 @@ const TransactionHistory: React.FC = () => {
 					return (
 						<div
 							key={tx.id}
+							data-testid={`activity-item-${tx.type}`}
 							className={cn(
 								'group rounded-xl border border-white/10 bg-white/[0.02] transition-all duration-200 hover:border-white/20 hover:bg-white/[0.04]',
 								isCompact && !isExpanded && 'py-2',
@@ -183,7 +184,7 @@ const TransactionHistory: React.FC = () => {
 											<div className="mt-1 flex items-center gap-3 text-xs text-white/50">
 												<span>{tx.amount} keys</span>
 												<span className="text-white/30">•</span>
-												<span>{tx.price} ETH</span>
+												<span>{tx.price} XLM</span>
 												<span className="text-white/30">•</span>
 												<span>{formatTimestamp(tx.timestamp)}</span>
 											</div>
@@ -193,9 +194,12 @@ const TransactionHistory: React.FC = () => {
 									{(!isCompact || isExpanded) && (
 										<div className="hidden shrink-0 items-center gap-4 text-right sm:flex">
 											<div className="text-sm">
-												<div className="font-semibold text-white">
-													{tx.type === 'buy' ? '+' : '-'}
-													{(tx.amount * tx.price).toFixed(4)} ETH
+												<div
+													className="font-semibold text-white"
+													data-testid={`tx-amount-${tx.id}`}
+												>
+													{tx.type === 'buy' ? '-' : '+'}
+													{(tx.amount * tx.price).toFixed(4)} XLM
 												</div>
 												<div className="text-xs text-white/50">
 													{tx.txHash}
@@ -213,9 +217,12 @@ const TransactionHistory: React.FC = () => {
 									{isCompact && !isExpanded && (
 										<div className="flex shrink-0 items-center gap-3">
 											<div className="text-right">
-												<div className="text-sm font-semibold text-white">
-													{tx.type === 'buy' ? '+' : '-'}
-													{(tx.amount * tx.price).toFixed(4)} ETH
+												<div
+													className="text-sm font-semibold text-white"
+													data-testid={`tx-amount-${tx.id}`}
+												>
+													{tx.type === 'buy' ? '-' : '+'}
+													{(tx.amount * tx.price).toFixed(4)} XLM
 												</div>
 											</div>
 											<Button
@@ -247,7 +254,7 @@ const TransactionHistory: React.FC = () => {
 									<div className="flex items-center gap-3 text-white/50">
 										<span>{tx.amount} keys</span>
 										<span className="text-white/30">•</span>
-										<span>{tx.price} ETH</span>
+										<span>{tx.price} XLM</span>
 										<span className="text-white/30">•</span>
 										<span>{formatTimestamp(tx.timestamp)}</span>
 										<span className="text-white/30">•</span>

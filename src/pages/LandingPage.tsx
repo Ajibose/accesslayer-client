@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useDebounce } from '@/hooks/useDebounce';
 import { LayoutGroup, motion } from 'framer-motion';
 import { useSearchParams } from 'react-router';
 import { courseService, type Course } from '@/services/course.service';
@@ -293,6 +294,7 @@ function LandingPage() {
 	const [isFilterLoading, setIsFilterLoading] = useState(false);
 	const [searchParams, setSearchParams] = useSearchParams();
 	const [searchQuery, setSearchQuery] = useState('');
+	const debouncedSearchQuery = useDebounce(searchQuery, 300);
 	const [minPriceFilter, setMinPriceFilter] = useState('');
 	const [maxPriceFilter, setMaxPriceFilter] = useState('');
 	const searchQueryRef = useRef<string>('');
@@ -473,6 +475,7 @@ function LandingPage() {
 				const params = {
 					...(minPrice !== undefined ? { min_price: minPrice } : {}),
 					...(maxPrice !== undefined ? { max_price: maxPrice } : {}),
+					...(debouncedSearchQuery.trim() ? { search: debouncedSearchQuery.trim() } : {}),
 				};
 				const data = await courseService.getCourses(
 					Object.keys(params).length > 0 ? params : undefined
@@ -516,7 +519,7 @@ function LandingPage() {
 		};
 
 		fetchCreators();
-	}, [fetchRetryAttempt, fetchRequestId, maxPriceFilter, minPriceFilter]);
+	}, [fetchRetryAttempt, fetchRequestId, maxPriceFilter, minPriceFilter, debouncedSearchQuery]);
 
 	const searchSuggestions = useMemo(() => {
 		const fromCategories = creators
