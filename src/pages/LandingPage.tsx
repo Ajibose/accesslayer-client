@@ -473,6 +473,7 @@ function LandingPage() {
 				const params = {
 					...(minPrice !== undefined ? { min_price: minPrice } : {}),
 					...(maxPrice !== undefined ? { max_price: maxPrice } : {}),
+					...(sortOption !== 'featured' ? { sort: sortOption } : {}),
 				};
 				const data = await courseService.getCourses(
 					Object.keys(params).length > 0 ? params : undefined
@@ -516,7 +517,13 @@ function LandingPage() {
 		};
 
 		fetchCreators();
-	}, [fetchRetryAttempt, fetchRequestId, maxPriceFilter, minPriceFilter]);
+	}, [
+		fetchRetryAttempt,
+		fetchRequestId,
+		maxPriceFilter,
+		minPriceFilter,
+		sortOption,
+	]);
 
 	const searchSuggestions = useMemo(() => {
 		const fromCategories = creators
