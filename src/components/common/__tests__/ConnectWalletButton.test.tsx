@@ -1,5 +1,5 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { describe, expect, it, vi, beforeEach } from 'vitest';
 
 import ConnectWalletButton from '@/components/common/ConnectWalletButton';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
@@ -14,25 +14,31 @@ const mockUseAccount = vi.mocked(useAccount);
 const mockUseConnect = vi.mocked(useConnect);
 const mockUseDisconnect = vi.mocked(useDisconnect);
 
+const FULL_ADDRESS = '0x1234567890abcdef1234567890abcdef12345678';
+
+function setupConnectedWalletMocks(disconnect = vi.fn()) {
+	mockUseAccount.mockReturnValue({
+		address: FULL_ADDRESS,
+		isConnected: true,
+	} as ReturnType<typeof useAccount>);
+	mockUseConnect.mockReturnValue({
+		connect: vi.fn(),
+		connectors: [],
+		error: null,
+		isPending: false,
+	} as unknown as ReturnType<typeof useConnect>);
+	mockUseDisconnect.mockReturnValue({
+		disconnect,
+	} as unknown as ReturnType<typeof useDisconnect>);
+
+	return { disconnect };
+}
+
 describe('ConnectWalletButton wallet disconnect confirmation', () => {
 	function renderConnectedWallet(disconnect = vi.fn()) {
-		mockUseAccount.mockReturnValue({
-			address: '0x1234567890abcdef1234567890abcdef12345678',
-			isConnected: true,
-		} as ReturnType<typeof useAccount>);
-		mockUseConnect.mockReturnValue({
-			connect: vi.fn(),
-			connectors: [],
-			error: null,
-			isPending: false,
-		} as unknown as ReturnType<typeof useConnect>);
-		mockUseDisconnect.mockReturnValue({
-			disconnect,
-		} as unknown as ReturnType<typeof useDisconnect>);
-
+		const result = setupConnectedWalletMocks(disconnect);
 		render(<ConnectWalletButton />);
-
-		return { disconnect };
+		return result;
 	}
 
 	it('opens a confirmation dialog before disconnecting', () => {
@@ -77,5 +83,72 @@ describe('ConnectWalletButton wallet disconnect confirmation', () => {
 			expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
 		});
 		expect(disconnect).not.toHaveBeenCalled();
+	});
+});
+
+describe('ConnectWalletButton copy wallet address', () => {
+	beforeEach(() => {
+		Object.assign(navigator, {
+			clipboard: { writeText: vi.fn().mockResolvedValue(undefined) },
+		});
+	});
+
+	function renderConnectedWallet() {
+		setupConnectedWalletMocks();
+		render(<ConnectWalletButton />);
+	}
+
+	it('shows a copy button when the wallet is connected', () => {
+		renderConnectedWallet();
+
+		expect(
+			screen.getByRole('button', { name: /copy wallet address/i })
+		).toBeInTheDocument();
+	});
+
+	it('copies the full unmasked address to the clipboard on click', async () => {
+		renderConnectedWallet();
+
+		fireEvent.click(
+			screen.getByRole('button', { name: /copy wallet address/i })
+		);
+
+		await waitFor(() => {
+			expect(navigator.clipboard.writeText).toHaveBeenCalledWith(FULL_ADDRESS);
+		});
+	});
+
+	it('shows a Copied! confirmation after clicking', async () => {
+		renderConnectedWallet();
+
+		fireEvent.click(
+			screen.getByRole('button', { name: /copy wallet address/i })
+		);
+
+		expect(await screen.findByText('Copied!')).toBeInTheDocument();
+	});
+
+	it('removes the Copied! confirmation after 2 seconds', async () => {
+		vi.useFakeTimers();
+		renderConnectedWallet();
+
+		fireEvent.click(
+			screen.getByRole('button', { name: /copy wallet address/i })
+		);
+
+		// Flush the clipboard promise microtask so state updates land
+		await act(async () => {
+			await Promise.resolve();
+		});
+
+		expect(screen.getByText('Copied!')).toBeInTheDocument();
+
+		act(() => {
+			vi.advanceTimersByTime(2000);
+		});
+
+		expect(screen.queryByText('Copied!')).not.toBeInTheDocument();
+
+		vi.useRealTimers();
 	});
 });

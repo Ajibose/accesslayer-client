@@ -3,6 +3,7 @@ import {
 	formatNumber,
 	formatCompactNumber,
 	formatFollowerCount,
+	formatHolderCount,
 	formatPercent,
 } from '../numberFormat.utils';
 
@@ -142,6 +143,34 @@ describe('formatFollowerCount: Legacy follower abbreviation', () => {
 
 	it('removes ".0" suffix: 1,000 → "1K" not "1.0K"', () => {
 		expect(formatFollowerCount(1000)).toBe('1K');
+	});
+});
+
+// ---------------------------------------------------------------------------
+// Feature: Holder count formatting
+// Validates: Issue #438 acceptance criteria
+// ---------------------------------------------------------------------------
+describe('formatHolderCount: Holder count abbreviation', () => {
+	it('returns values under 1000 as a plain string', () => {
+		expect(formatHolderCount(0)).toBe('0');
+		expect(formatHolderCount(42)).toBe('42');
+		expect(formatHolderCount(999)).toBe('999');
+	});
+
+	it('formats values in the K range with one decimal place', () => {
+		expect(formatHolderCount(1200)).toBe('1.2K');
+		expect(formatHolderCount(1500)).toBe('1.5K');
+		expect(formatHolderCount(999_999)).toBe('1000K');
+	});
+
+	it('formats values in the M range with one decimal place', () => {
+		expect(formatHolderCount(2_400_000)).toBe('2.4M');
+		expect(formatHolderCount(1_250_000)).toBe('1.3M');
+	});
+
+	it('handles boundary values at 1000 and 1000000', () => {
+		expect(formatHolderCount(1000)).toBe('1K');
+		expect(formatHolderCount(1_000_000)).toBe('1M');
 	});
 });
 

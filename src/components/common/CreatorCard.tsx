@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { useAccount } from 'wagmi';
 import type { Course } from '@/services/course.service';
 import { cn } from '@/lib/utils';
@@ -100,6 +100,23 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 		});
 	const hasFailedOnceRef = useRef(false);
 	const trackTransactionEvent = useTransactionTelemetry();
+	const cardRef = useRef<HTMLDivElement>(null);
+
+	// Keyboard shortcut for quick buy (press 'b' when card is focused)
+	useEffect(() => {
+		const handleKeyDown = (e: KeyboardEvent) => {
+			// Only trigger if 'b' is pressed and card is focused
+			if (e.key === 'b' || e.key === 'B') {
+				handleBuy();
+			}
+		};
+
+		const cardElement = cardRef.current;
+		if (cardElement) {
+			cardElement.addEventListener('keydown', handleKeyDown);
+			return () => cardElement.removeEventListener('keydown', handleKeyDown);
+		}
+	}, [isConnected, isNetworkMismatch, displayCreatorName]);
 
 	const runPurchaseAttempt = () => {
 		setTransactionState('submitting');
@@ -197,6 +214,8 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 
 	return (
 		<div
+			ref={cardRef}
+			tabIndex={0}
 			className={cn(
 				'marketplace-card-surface marketplace-card-surface-hover group relative overflow-hidden rounded-2xl border p-4 transition-all duration-300 focus-within:ring-2 focus-within:ring-amber-400/40 focus-within:ring-offset-2 focus-within:ring-offset-slate-950 motion-reduce:transition-none motion-safe:md:hover:-translate-y-0.5 motion-safe:md:hover:border-amber-500/25 motion-safe:md:hover:shadow-[0_12px_32px_-20px_rgba(251,191,36,0.5)] motion-reduce:md:hover:translate-y-0 motion-reduce:md:hover:border-amber-500/35 motion-reduce:md:hover:bg-white/[0.05] motion-reduce:md:hover:shadow-[0_0_0_1px_rgba(251,191,36,0.12)]',
 				className
@@ -476,7 +495,12 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 				>
 					Purchase actions for {displayCreatorName}
 				</span>
-				<NetworkFeeHint className="shrink-0" />
+				<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+					<NetworkFeeHint className="shrink-0" />
+					<span className="hidden sm:inline text-xs text-white/40">
+						Press <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-white/60 font-mono">B</kbd> to quick buy
+					</span>
+				</div>
 				<AsyncButton
 					onClick={handleBuy}
 					variant={isConnected ? 'default' : 'outline'}

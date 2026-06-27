@@ -45,7 +45,14 @@ export function formatCompactNumber(
 	return formatNumber(value, { ...options, style: 'compact' });
 }
 
-export function formatFollowerCount(count: number): string {
+/**
+ * Formats holder counts for compact display across creator profile surfaces.
+ *
+ * - Below 1,000: plain string (e.g. `999`)
+ * - 1,000–999,999: one decimal K suffix (e.g. `1.2K`, `1K` at exactly 1,000)
+ * - 1,000,000+: one decimal M suffix (e.g. `2.4M`, `1M` at exactly 1,000,000)
+ */
+export function formatHolderCount(count: number): string {
 	if (count >= 1_000_000) {
 		return `${(count / 1_000_000).toFixed(1).replace(/\.0$/, '')}M`;
 	}
@@ -53,6 +60,10 @@ export function formatFollowerCount(count: number): string {
 		return `${(count / 1_000).toFixed(1).replace(/\.0$/, '')}K`;
 	}
 	return count.toString();
+}
+
+export function formatFollowerCount(count: number): string {
+	return formatHolderCount(count);
 }
 
 export interface FormatPercentOptions {
