@@ -19,6 +19,8 @@ import {
 } from '@/hooks/useWalletConnectionStallDetection';
 import { useCopySuccessAnnouncement } from '@/hooks/useCopySuccessAnnouncement';
 import CopySuccessAnnouncement from '@/components/common/CopySuccessAnnouncement';
+import showToast from '@/utils/toast.util';
+import { copyTextToClipboard } from '@/utils/clipboard.utils';
 
 function ConnectWalletButton() {
 	const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
@@ -37,12 +39,15 @@ function ConnectWalletButton() {
 	const handleCopyAddress = async () => {
 		if (!address) return;
 		try {
-			await navigator.clipboard.writeText(address);
+			await copyTextToClipboard(address);
 			announceCopySuccess('Wallet address copied.');
 			setCopied(true);
 			window.setTimeout(() => setCopied(false), 2000);
 		} catch {
 			setCopied(false);
+			showToast.error(
+				'Could not copy the wallet address. Please copy it manually.'
+			);
 		}
 	};
 
