@@ -76,4 +76,11 @@ describe('useIsMobile integration (#485)', () => {
 		});
 		expect(screen.getByTestId('mobile-state')).toHaveTextContent('mobile');
 	});
+
+	it('cleans up the media query listener on unmount', () => {
+		const removeSpy = vi.spyOn(mql, 'removeEventListener');
+		const { unmount } = render(<MobileProbe />);
+		unmount();
+		expect(removeSpy).toHaveBeenCalledWith('change', expect.any(Function));
+	});
 });

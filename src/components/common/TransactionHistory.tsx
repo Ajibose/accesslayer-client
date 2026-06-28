@@ -69,18 +69,7 @@ const SAMPLE_TRANSACTIONS: Transaction[] = [
 	},
 ];
 
-const formatTimestamp = (timestamp: number) => {
-	const now = Date.now();
-	const diff = now - timestamp;
-	const minutes = Math.floor(diff / (1000 * 60));
-	const hours = Math.floor(diff / (1000 * 60 * 60));
-	const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-
-	if (minutes < 1) return 'Just now';
-	if (minutes < 60) return `${minutes}m ago`;
-	if (hours < 24) return `${hours}h ago`;
-	return `${days}d ago`;
-};
+import { formatRelativeTime } from '@/utils/time.utils';
 
 const TransactionHistory: React.FC = () => {
 	const [isCompact, setIsCompact] = useState(() => {
@@ -186,7 +175,7 @@ const TransactionHistory: React.FC = () => {
 												<span className="text-white/30">•</span>
 												<span>{tx.price} XLM</span>
 												<span className="text-white/30">•</span>
-												<span>{formatTimestamp(tx.timestamp)}</span>
+												<span>{formatRelativeTime(tx.timestamp)}</span>
 											</div>
 										)}
 									</div>
@@ -256,7 +245,7 @@ const TransactionHistory: React.FC = () => {
 										<span className="text-white/30">•</span>
 										<span>{tx.price} XLM</span>
 										<span className="text-white/30">•</span>
-										<span>{formatTimestamp(tx.timestamp)}</span>
+										<span>{formatRelativeTime(tx.timestamp)}</span>
 										<span className="text-white/30">•</span>
 										<span>{tx.txHash}</span>
 									</div>

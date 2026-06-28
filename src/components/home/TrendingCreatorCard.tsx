@@ -4,6 +4,7 @@ import { Link } from 'react-router';
 import type { Course } from '@/services/course.service';
 
 type Props = { creator: Course & { walletAddress: string } };
+import { formatHolderCount } from '@/utils/numberFormat.utils';
 
 export default function TrendingCreatorCard({ creator }: Props) {
 	const name = creator.title || 'Unnamed creator';
@@ -49,7 +50,7 @@ export default function TrendingCreatorCard({ creator }: Props) {
 						<div className="flex items-center gap-1.5 text-gray-400">
 							<Users className="size-3.5" />
 							<span className="font-mono text-[10px]">
-								{creator.creatorShareSupply.toLocaleString()}
+								{formatHolderCount(creator.creatorShareSupply)}
 							</span>
 						</div>
 					)}

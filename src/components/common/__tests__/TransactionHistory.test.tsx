@@ -51,4 +51,19 @@ describe('TransactionHistory – activity feed sign prefix (integration)', () =>
 			expect(amountEl!.textContent).toMatch(/XLM$/);
 		});
 	});
+
+	it('renders relative time label correctly for recent versus older events (#487)', () => {
+		render(<TransactionHistory />);
+
+		// SAMPLE_TRANSACTIONS has one from 30 minutes ago, one from 5 days ago (120 hours).
+		// We expect the first one to say "30 min ago" and the latter to say "5 days ago".
+		// Actually, let's just check for 'min ago' and 'days ago'
+		expect(screen.getAllByText(/min ago/)).not.toHaveLength(0);
+		expect(screen.getAllByText(/days ago/)).not.toHaveLength(0);
+		
+		// Ensure raw ISO timestamp is not shown
+		const isoRegex = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/;
+		const rawTimestamps = screen.queryAllByText(isoRegex);
+		expect(rawTimestamps).toHaveLength(0);
+	});
 });
