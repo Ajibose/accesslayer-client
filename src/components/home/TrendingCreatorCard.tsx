@@ -64,6 +64,6 @@ export default function TrendingCreatorCard({ creator }: Props) {
 					<ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
 				</Link>
 			</div>
-		</article>
+		</article> 
 	);
 }
