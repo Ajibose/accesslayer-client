@@ -33,6 +33,7 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { AsyncButton } from '@/components/ui/async-button';
 import { useNetworkMismatch } from '@/hooks/useNetworkMismatch';
 import { useTransactionTelemetry } from '@/hooks/useTransactionTelemetry';
+import { copyTextToClipboard } from '@/utils/clipboard.utils';
 import TransactionRetryNotice from '@/components/common/TransactionRetryNotice';
 import TransactionFailureDrawer from '@/components/common/TransactionFailureDrawer';
 import type { TransactionFailureDetails } from '@/components/common/TransactionFailureDrawer';
@@ -170,23 +171,29 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 	const isRecentlyActive = (creator.volume24h ?? 0) > 0;
 	const keyPriceDisplay = formatCreatorKeyPriceDisplay(creator);
 
-	const handleCopyLink = () => {
+	const handleCopyLink = async () => {
 		const url = `${window.location.origin}/creator/${creator.id}`;
-		navigator.clipboard
-			.writeText(url)
-			.then(() => toast.success('Profile link copied'))
-			.catch(() => toast.error('Could not copy link'));
+		try {
+			await copyTextToClipboard(url);
+			toast.success('Profile link copied');
+		} catch {
+			toast.error('Could not copy the profile link. Please copy it manually.');
+		}
 	};
 
-	const handleShare = () => {
+	const handleShare = async () => {
 		const url = `${window.location.origin}/creator/${creator.id}`;
 		if (navigator.share) {
 			navigator.share({ title: displayCreatorName, url }).catch(() => {});
 		} else {
-			navigator.clipboard
-				.writeText(url)
-				.then(() => toast.success('Link copied to clipboard'))
-				.catch(() => toast.error('Could not share'));
+			try {
+				await copyTextToClipboard(url);
+				toast.success('Link copied to clipboard');
+			} catch {
+				toast.error(
+					'Could not copy the share link. Please copy it manually.'
+				);
+			}
 		}
 	};
 

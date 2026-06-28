@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import { Copy, Check, Share2 } from 'lucide-react';
 import showToast from '@/utils/toast.util';
 import appendUtmParams from '@/utils/utm.utils';
+import { copyTextToClipboard } from '@/utils/clipboard.utils';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import VerifiedBadge from '@/components/common/VerifiedBadge';
@@ -73,12 +74,14 @@ const CreatorProfileHeader: React.FC<CreatorProfileHeaderProps> = ({
 
 		// Fallback: copy to clipboard
 		try {
-			await navigator.clipboard.writeText(url);
+			await copyTextToClipboard(url);
 			setCopied(true);
 			showToast.success('Profile link copied to clipboard!');
 			setTimeout(() => setCopied(false), 2000);
 		} catch {
-			showToast.error('Failed to copy link');
+			showToast.error(
+				'Could not copy the profile link. Please copy it manually.'
+			);
 		}
 	};
 
