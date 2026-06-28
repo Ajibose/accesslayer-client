@@ -24,6 +24,7 @@ import CompactSectionSubtitle from '@/components/common/CompactSectionSubtitle';
 import CreatorProfileInfoGrid from '@/components/common/CreatorProfileInfoGrid';
 import CreatorLabeledStatRow from '@/components/common/CreatorLabeledStatRow';
 import MiniStatChip from '@/components/common/MiniStatChip';
+import { FeaturedCreatorAudienceChip } from '@/components/common/FeaturedCreatorAudienceChip';
 import MarketplaceSection from '@/components/common/MarketplaceSection';
 import { ProfileTabPillGroup } from '@/components/common/ProfileTabPill';
 import CreatorBreadcrumb from '@/components/common/CreatorBreadcrumb';
@@ -79,28 +80,6 @@ const FEATURED_CREATOR_FACTS = [
 
 const FEATURED_CREATOR_FOLLOWER_COUNT: number | null = null;
 const FEATURED_CREATOR_KEY_HOLDER_COUNT = 0;
-
-const getFeaturedCreatorKeyHolderCopy = (count: number | null) => {
-	if (count == null) {
-		return {
-			value: 'Key holders unavailable',
-			explanation: 'Key holder data is not available yet.',
-		};
-	}
-
-	if (count === 0) {
-		return {
-			value: 'No key holders yet',
-			explanation:
-				'This creator has not unlocked any key holders yet. Be the first to buy a key and start the collector base.',
-		};
-	}
-
-	return {
-		value: `${formatCompactNumber(count)} key holders`,
-		explanation: 'Number of wallets that currently hold at least one key.',
-	};
-};
 
 // Fallback demo data in case API fails
 const DEMO_CREATORS: Course[] = [
@@ -604,10 +583,6 @@ function LandingPage() {
 		const start = safePage * PAGE_SIZE;
 		return filteredCreators.slice(start, start + PAGE_SIZE);
 	}, [filteredCreators, safePage]);
-	const featuredCreatorKeyHolderCopy = getFeaturedCreatorKeyHolderCopy(
-		FEATURED_CREATOR_KEY_HOLDER_COUNT
-	);
-
 	// Choose the featured creator from live data when available, otherwise
 	// fall back to the demo featured creator. This keeps the profile panel
 	// reactive to backend updates (supply, price, etc.).
@@ -1309,12 +1284,9 @@ function LandingPage() {
 												value="Verified creator"
 												explanation="Creator has completed identity verification with Access Layer."
 											/>
-											<MiniStatChip
-												label="Audience"
-												value={featuredCreatorKeyHolderCopy.value}
-												explanation={
-													featuredCreatorKeyHolderCopy.explanation
-												}
+											<FeaturedCreatorAudienceChip
+												creatorId="featured-creator"
+												fetchHolderCount={() => Promise.resolve(FEATURED_CREATOR_KEY_HOLDER_COUNT)}
 											/>
 											<MiniStatChip
 												label="Access"
