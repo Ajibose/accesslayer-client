@@ -25,6 +25,12 @@ export interface Course {
 	isPinned?: boolean;
 }
 
+export type CourseSortOption =
+	| 'featured'
+	| 'price-asc'
+	| 'price-desc'
+	| 'supply-desc';
+
 export interface GetCoursesParams {
 	page?: number;
 	limit?: number;
@@ -32,6 +38,7 @@ export interface GetCoursesParams {
 	search?: string;
 	min_price?: number;
 	max_price?: number;
+	sort?: Exclude<CourseSortOption, 'featured'>;
 }
 
 class CourseService extends BaseApiService {
