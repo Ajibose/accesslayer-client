@@ -24,7 +24,10 @@ import toast from 'react-hot-toast';
 import showToast from '@/utils/toast.util';
 import { formatCompactNumber } from '@/utils/numberFormat.utils';
 import { formatCreatorKeyPriceDisplay } from '@/utils/keyPriceDisplay.utils';
-import { formatCreatorHandle } from '@/utils/handleDisplay.utils';
+import {
+	formatCreatorHandle,
+	truncateHandle,
+} from '@/utils/handleDisplay.utils';
 import { normalizeCreatorDisplayName } from '@/utils/creatorDisplayName.utils';
 import { getCreatorPriceChartAccessibilityCopy } from '@/utils/creatorPriceChartAccessibility.utils';
 import { formatJoinDate } from '@/utils/formatJoinDate';
@@ -79,6 +82,8 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 	const displayInstructorHandle =
 		formatCreatorHandle(creator.instructorId) || '@creator';
 	const displaySocialHandle = formatCreatorHandle(creator.socialHandle);
+	const truncatedInstructorHandle = truncateHandle(displayInstructorHandle);
+	const truncatedSocialHandle = truncateHandle(displaySocialHandle);
 	const displayCreatorName =
 		normalizeCreatorDisplayName(creator.title) || 'Unnamed creator';
 	const priceChartAccessibility = getCreatorPriceChartAccessibilityCopy({
@@ -326,7 +331,7 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 						creatorShareSupply={creator.creatorShareSupply}
 						isVerified={creator.isVerified}
 					>
-						{displayInstructorHandle}
+						{truncatedInstructorHandle}
 					</CreatorHandleHoverCard>
 				</p>
 
@@ -350,7 +355,7 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 							creatorShareSupply={creator.creatorShareSupply}
 							isVerified={creator.isVerified}
 						>
-							<span className="truncate">{displaySocialHandle}</span>
+							<span className="truncate">{truncatedSocialHandle}</span>
 						</CreatorHandleHoverCard>
 					</div>
 				) : (
@@ -436,7 +441,7 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 						}
 						value={
 							creator.socialHandle
-								? displaySocialHandle
+								? truncatedSocialHandle
 								: 'No public handle'
 						}
 						valueTitle={
