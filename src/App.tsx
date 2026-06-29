@@ -2,23 +2,16 @@ import Lenis from 'lenis';
 import { useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { createBrowserRouter, RouterProvider } from 'react-router';
-import HomePage from './pages/HomePage';
-import NotFoundPage from './pages/NotFoundPage';
+import { routes } from './routes';
 
-const router = createBrowserRouter([
-	{
-		path: '/',
-		element: <HomePage />,
-	},
-	{
-		path: '*',
-		element: <NotFoundPage />,
-	},
-]);
+const router = createBrowserRouter(routes);
 
 function App() {
 	useEffect(() => {
-		const lenis = new Lenis({ duration: 1.2, easing: t => Math.min(1, 1.001 - Math.pow(2, -10 * t)) });
+		const lenis = new Lenis({
+			duration: 1.2,
+			easing: t => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+		});
 		function raf(time: number) {
 			lenis.raf(time);
 			requestAnimationFrame(raf);
