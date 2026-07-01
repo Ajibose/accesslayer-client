@@ -2,16 +2,25 @@ import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ChevronDown, ChevronUp, ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { formatRelativeTime } from '@/utils/time.utils';
+import { formatCreatorHandle } from '@/utils/handleDisplay.utils';
 
-interface Transaction {
+export interface Transaction {
 	id: string;
 	type: 'buy' | 'sell';
-	creator: string;
+	/** Raw creator identifier from the API — never shown in the UI. */
+	creatorId: string;
+	/** Human-readable handle used for display (e.g. instructorId). */
+	creatorHandle: string;
 	amount: number;
 	price: number;
 	timestamp: number;
 	txHash: string;
 	status: 'completed' | 'pending' | 'failed';
+}
+
+interface TransactionHistoryProps {
+	transactions?: Transaction[];
 }
 
 const COMPACT_VIEW_KEY = 'accesslayer.transaction-compact-view';
@@ -20,7 +29,8 @@ const SAMPLE_TRANSACTIONS: Transaction[] = [
 	{
 		id: '1',
 		type: 'buy',
-		creator: 'Alex Rivers',
+		creatorId: '1',
+		creatorHandle: 'arivers',
 		amount: 5,
 		price: 0.05,
 		timestamp: Date.now() - 1000 * 60 * 30,
@@ -30,7 +40,8 @@ const SAMPLE_TRANSACTIONS: Transaction[] = [
 	{
 		id: '2',
 		type: 'sell',
-		creator: 'Sarah Chen',
+		creatorId: '2',
+		creatorHandle: 'schen_dev',
 		amount: 3,
 		price: 0.12,
 		timestamp: Date.now() - 1000 * 60 * 60 * 2,
@@ -40,7 +51,8 @@ const SAMPLE_TRANSACTIONS: Transaction[] = [
 	{
 		id: '3',
 		type: 'buy',
-		creator: 'Marcus Thorne',
+		creatorId: '3',
+		creatorHandle: 'mthorne',
 		amount: 10,
 		price: 0.08,
 		timestamp: Date.now() - 1000 * 60 * 60 * 5,
@@ -50,7 +62,8 @@ const SAMPLE_TRANSACTIONS: Transaction[] = [
 	{
 		id: '4',
 		type: 'buy',
-		creator: 'Elena Vance',
+		creatorId: '4',
+		creatorHandle: 'evance_design',
 		amount: 2,
 		price: 0.04,
 		timestamp: Date.now() - 1000 * 60 * 60 * 24,
@@ -60,7 +73,8 @@ const SAMPLE_TRANSACTIONS: Transaction[] = [
 	{
 		id: '5',
 		type: 'sell',
-		creator: 'David Kojo',
+		creatorId: '5',
+		creatorHandle: 'dkojo_beats',
 		amount: 7,
 		price: 0.15,
 		timestamp: Date.now() - 1000 * 60 * 60 * 48,
@@ -69,9 +83,9 @@ const SAMPLE_TRANSACTIONS: Transaction[] = [
 	},
 ];
 
-import { formatRelativeTime } from '@/utils/time.utils';
-
-const TransactionHistory: React.FC = () => {
+const TransactionHistory: React.FC<TransactionHistoryProps> = ({
+	transactions = SAMPLE_TRANSACTIONS,
+}) => {
 	const [isCompact, setIsCompact] = useState(() => {
 		if (typeof window === 'undefined') return false;
 		const saved = localStorage.getItem(COMPACT_VIEW_KEY);
@@ -143,7 +157,8 @@ const TransactionHistory: React.FC = () => {
 			</div>
 
 			<div className="space-y-2">
-				{SAMPLE_TRANSACTIONS.map(tx => {
+				{transactions.map(tx => {
+					const displayHandle = formatCreatorHandle(tx.creatorHandle);
 					const isExpanded = expandedRows.has(tx.id) || !isCompact;
 					return (
 						<div
@@ -167,7 +182,12 @@ const TransactionHistory: React.FC = () => {
 												{getTransactionTypeLabel(tx.type)}
 											</span>
 											<span className="text-white/40">•</span>
-											<span className="text-white/90">{tx.creator}</span>
+											<span
+												className="text-white/90"
+												data-testid={`activity-creator-handle-${tx.id}`}
+											>
+												{displayHandle}
+											</span>
 										</div>
 										{(!isCompact || isExpanded) && (
 											<div className="mt-1 flex items-center gap-3 text-xs text-white/50">

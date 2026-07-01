@@ -262,6 +262,10 @@ const CreatorProfileLoadError: React.FC<CreatorProfileLoadErrorProps> = ({
 
 function LandingPage() {
 	const [creators, setCreators] = useState<Course[]>([]);
+	// Creators used for wallet holdings; kept separate from the marketplace
+	// list so an empty API holdings response can show zero positions while
+	// the browse grid still falls back to demo creators.
+	const [holdingsCreators, setHoldingsCreators] = useState<Course[]>([]);
 	// Last successful fetch timestamp (#301). `null` means we've never
 	// resolved a load yet — the staleness helper treats that as "stale"
 	// so the warning surfaces if the load hangs.
@@ -464,8 +468,10 @@ function LandingPage() {
 				);
 				if (data && data.length > 0) {
 					setCreators(data);
+					setHoldingsCreators(data);
 				} else {
 					setCreators(DEMO_CREATORS);
+					setHoldingsCreators([]);
 				}
 				// Track the last successful fetch so the stale-data warning
 				// has a baseline to compare against (#301).
@@ -495,6 +501,7 @@ function LandingPage() {
 				setShowRetryBanner(false);
 				setFetchRetryAttempt(0);
 				setCreators(DEMO_CREATORS);
+				setHoldingsCreators(DEMO_CREATORS);
 			} finally {
 				setIsLoading(false);
 			}
@@ -674,7 +681,7 @@ function LandingPage() {
 
 	const heldKeyPositions = useMemo(
 		() =>
-			creators.map((creator, index) => ({
+			holdingsCreators.map((creator, index) => ({
 				creatorId: creator.id,
 				quantity:
 					index === 0
@@ -685,7 +692,7 @@ function LandingPage() {
 				isPriceLoading: isPriceRefreshing,
 				isPriceStale: creatorsAreStale,
 			})),
-		[creators, creatorsAreStale, featuredHoldings, isPriceRefreshing]
+		[holdingsCreators, creatorsAreStale, featuredHoldings, isPriceRefreshing]
 	);
 	const portfolioValue = useMemo(
 		() => calculatePortfolioValue(heldKeyPositions),
@@ -1163,6 +1170,12 @@ function LandingPage() {
 								<p className="mt-2 text-xs leading-relaxed text-white/55">
 									{portfolioValueHelperText}
 								</p>
+								<span
+									data-testid="holdings-header-entry-count"
+									className="sr-only"
+								>
+									{displayedPortfolioValue.heldPositionCount}
+								</span>
 							</div>
 						</div>
 						{isLoading ? (
