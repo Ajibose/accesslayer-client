@@ -9,10 +9,10 @@ import SearchBar from '@/components/common/SearchBar';
 import StickyFilterBar from '@/components/common/StickyFilterBar';
 import CreatorCard from '@/components/common/CreatorCard';
 import {
-	CreatorGridSkeleton,
 	CreatorHoldingsListSkeleton,
 	CreatorProfileHeaderSkeleton,
 } from '@/components/common/CreatorSkeleton';
+import { CreatorCardGridSkeleton } from '@/components/common/CreatorCardSkeleton';
 import EmptyState from '@/components/common/EmptyState';
 import EmptySearchSuggestions from '@/components/common/EmptySearchSuggestions';
 import SectionDivider from '@/components/common/SectionDivider';
@@ -963,7 +963,11 @@ function LandingPage() {
 							)}
 
 							{isLoading ? (
-								<CreatorGridSkeleton count={6} />
+								// #421: replace the generic grid skeleton with
+								// CreatorCardGridSkeleton so each placeholder
+								// mirrors CreatorCard's dimensions and prevents
+								// layout shift when real cards arrive.
+								<CreatorCardGridSkeleton count={6} />
 							) : isFilterLoading ? (
 								<div className="space-y-4">
 									<div className="flex items-center justify-center gap-2 py-8">
