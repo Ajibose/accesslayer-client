@@ -1414,6 +1414,7 @@ function LandingPage() {
 				creatorName="Alex Rivers"
 				availableHoldings={featuredHoldings}
 				keyPriceStroops={resolveCreatorKeyPriceStroops(featuredCreator)}
+				currentSupply={featuredCreator.creatorShareSupply}
 				isSubmitting={tradeSubmitting}
 				onOpenChange={setTradeDialogOpen}
 				onConfirm={handleConfirmTrade}
