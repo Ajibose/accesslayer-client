@@ -162,7 +162,7 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 			});
 			showToast.transactionSuccess(
 				'Purchase Successful!',
-				`You successfully bought a key for ${displayCreatorName}`,
+				`Bought 1 key from ${displayCreatorName}`,
 				'0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
 				'https://stellar.expert/explorer/testnet/tx/0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
 			);
