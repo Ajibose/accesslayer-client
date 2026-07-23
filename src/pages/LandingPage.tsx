@@ -14,6 +14,7 @@ import {
 } from '@/components/common/CreatorSkeleton';
 import { CreatorCardGridSkeleton } from '@/components/common/CreatorCardSkeleton';
 import EmptyState from '@/components/common/EmptyState';
+import HoldingsEmptyState from '@/components/common/HoldingsEmptyState';
 import EmptySearchSuggestions from '@/components/common/EmptySearchSuggestions';
 import SectionDivider from '@/components/common/SectionDivider';
 import { Button } from '@/components/ui/button';
@@ -1184,6 +1185,11 @@ function LandingPage() {
 						</div>
 						{isLoading ? (
 							<CreatorHoldingsListSkeleton className="mt-6" />
+						) : heldKeyPositions.filter(
+								position => position.quantity && position.quantity > 0
+						  ).length === 0 ? (
+							// Settled empty only — skeleton covers loading so this never flashes.
+							<HoldingsEmptyState />
 						) : (
 							<div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 								{heldKeyPositions
@@ -1303,7 +1309,11 @@ function LandingPage() {
 											/>
 											<FeaturedCreatorAudienceChip
 												creatorId="featured-creator"
-												fetchHolderCount={() => Promise.resolve(FEATURED_CREATOR_KEY_HOLDER_COUNT)}
+												fetchHolderCount={() =>
+													Promise.resolve(
+														FEATURED_CREATOR_KEY_HOLDER_COUNT
+													)
+												}
 											/>
 											<MiniStatChip
 												label="Access"
