@@ -23,6 +23,8 @@ export interface Course {
 	joinedAt?: string;
 	/** Whether this creator is pinned in the marketplace list. */
 	isPinned?: boolean;
+	creatorFeeBps?: number;
+	protocolFeeBps?: number;
 }
 
 export type CourseSortOption =

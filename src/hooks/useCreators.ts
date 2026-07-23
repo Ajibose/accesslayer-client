@@ -1,6 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
-import type { GetCoursesParams } from '@/services/course.service';
+import {
+	courseService,
+	type GetCoursesParams,
+} from '@/services/course.service';
 
 export function useCreatorList(params?: GetCoursesParams) {
 	return useQuery({
@@ -12,7 +15,7 @@ export function useCreatorList(params?: GetCoursesParams) {
 export function useCreatorDetail(id: string) {
 	return useQuery({
 		queryKey: queryKeys.creators.detail(id),
-		queryFn: async () => null,
+		queryFn: () => courseService.getCourse(id),
 		enabled: !!id,
 	});
 }
