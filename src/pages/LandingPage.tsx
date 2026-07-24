@@ -66,11 +66,12 @@ import {
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { CREATOR_LIST_SORT_LAYOUT_TRANSITION } from '@/utils/creatorListSortTransition';
 import { creatorListKey } from '@/utils/creatorListKey.utils';
-import { AlertCircle, ChevronDown, RefreshCw } from 'lucide-react';
+import { AlertCircle, Check, ChevronDown, Copy, RefreshCw } from 'lucide-react';
 import ClearedFiltersEmptyState from '@/components/common/ClearedFiltersEmptyState';
 import CreatorListPagination from '@/components/common/CreatorListPagination';
 import CreatorListGroupSeparator from '@/components/common/CreatorListGroupSeparator';
 import MarketplaceSidebar from '@/components/common/MarketplaceSidebar';
+import { copyTextToClipboard } from '@/utils/clipboard.utils';
 
 const FEATURED_CREATOR_FACTS = [
 	{ label: 'Membership', value: 'Collectors Circle' },
@@ -81,6 +82,8 @@ const FEATURED_CREATOR_FACTS = [
 
 const FEATURED_CREATOR_FOLLOWER_COUNT: number | null = null;
 const FEATURED_CREATOR_KEY_HOLDER_COUNT = 0;
+const FEATURED_CREATOR_STELLAR_ADDRESS =
+	'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5';
 
 // Fallback demo data in case API fails
 const DEMO_CREATORS: Course[] = [
@@ -210,6 +213,13 @@ const isCreatorRefreshShortcut = (event: KeyboardEvent) =>
 	!event.shiftKey &&
 	event.key.toLowerCase() === 'r';
 
+const isTradeShortcut = (event: KeyboardEvent) =>
+	!event.ctrlKey &&
+	!event.metaKey &&
+	!event.altKey &&
+	!event.shiftKey &&
+	event.key.toLowerCase() === 't';
+
 const toPriceFilterValue = (value: string) => {
 	if (!value.trim()) return undefined;
 	const parsed = Number(value);
@@ -294,6 +304,7 @@ function LandingPage() {
 	const [tradeSide, setTradeSide] = useState<TradeSide>('buy');
 	const [tradeDialogOpen, setTradeDialogOpen] = useState(false);
 	const [tradeSubmitting, setTradeSubmitting] = useState(false);
+	const [stellarAddressCopied, setStellarAddressCopied] = useState(false);
 	const prefersReducedMotion = usePrefersReducedMotion();
 	const [sortOption, setSortOption] = useState<SortOption>(() => {
 		const sort = searchParams.get('sort') as SortOption | null;
@@ -713,9 +724,40 @@ function LandingPage() {
 		displayedPortfolioValue
 	);
 
-	const openTradeDialog = (side: TradeSide) => {
+	const openTradeDialog = useCallback((side: TradeSide) => {
 		setTradeSide(side);
 		setTradeDialogOpen(true);
+	}, []);
+
+	// Issue 554: T key opens the trade panel from the creator profile page.
+	useEffect(() => {
+		const handleTradeShortcut = (event: KeyboardEvent) => {
+			if (
+				event.defaultPrevented ||
+				event.repeat ||
+				!isTradeShortcut(event) ||
+				isEditableShortcutTarget(event.target)
+			) {
+				return;
+			}
+
+			event.preventDefault();
+			openTradeDialog('buy');
+		};
+
+		window.addEventListener('keydown', handleTradeShortcut);
+		return () => window.removeEventListener('keydown', handleTradeShortcut);
+	}, [openTradeDialog]);
+
+	const handleCopyStellarAddress = async () => {
+		try {
+			await copyTextToClipboard(FEATURED_CREATOR_STELLAR_ADDRESS);
+			setStellarAddressCopied(true);
+			showToast.success('Address copied to clipboard', { duration: 2000 });
+			setTimeout(() => setStellarAddressCopied(false), 2000);
+		} catch {
+			showToast.error('Could not copy the Stellar address. Please copy it manually.');
+		}
 	};
 
 	const handleConfirmTrade = async (amount: number) => {
@@ -1390,6 +1432,42 @@ function LandingPage() {
 													)} shares available`
 										}
 									/>
+									{/* Issue 557: Stellar address with copy button */}
+									<div className="flex items-center justify-between gap-2 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2">
+										<div className="min-w-0 flex-1">
+											<p className="mb-0.5 text-[0.6rem] font-bold uppercase tracking-[0.2em] text-white/40">
+												Stellar Address
+											</p>
+											<p
+												className="truncate font-mono text-xs text-white/70"
+												title={FEATURED_CREATOR_STELLAR_ADDRESS}
+											>
+												{FEATURED_CREATOR_STELLAR_ADDRESS}
+											</p>
+										</div>
+										<button
+											type="button"
+											onClick={handleCopyStellarAddress}
+											aria-label={
+												stellarAddressCopied
+													? 'Stellar address copied'
+													: 'Copy Stellar address'
+											}
+											className="inline-flex size-8 shrink-0 items-center justify-center rounded-md bg-white/5 text-white/40 transition-colors hover:bg-white/10 hover:text-white"
+										>
+											{stellarAddressCopied ? (
+												<Check
+													className="size-4 text-emerald-400"
+													aria-hidden="true"
+												/>
+											) : (
+												<Copy
+													className="size-4"
+													aria-hidden="true"
+												/>
+											)}
+										</button>
+									</div>
 									{isNetworkMismatch && <NetworkMismatchBanner />}
 									<div className="relative">
 										<div
