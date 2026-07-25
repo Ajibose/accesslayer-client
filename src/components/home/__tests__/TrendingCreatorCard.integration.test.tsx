@@ -52,4 +52,22 @@ describe('TrendingCreatorCard integration (#484)', () => {
 		
 		expect(screen.getByText('999')).toBeInTheDocument();
 	});
+
+	it('applies creator card subtitle clamp helper class to description', () => {
+		render(
+			<MemoryRouter>
+				<TrendingCreatorCard
+					creator={{
+						...baseCreator,
+						description: 'A long subtitle description for testing clamp helper.',
+					}}
+				/>
+			</MemoryRouter>
+		);
+
+		const descriptionElement = screen.getByText(
+			'A long subtitle description for testing clamp helper.'
+		);
+		expect(descriptionElement.className).toMatch(/\bline-clamp-2\b/);
+	});
 });
