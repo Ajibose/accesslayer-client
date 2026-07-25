@@ -16,6 +16,7 @@ import PercentageBadge from '@/components/common/PercentageBadge';
 import NetworkFeeHint from '@/components/common/NetworkFeeHint';
 import { TRADE_FEE_ESTIMATE } from '@/constants/fees';
 import { formatTransactionFeeDisplay } from '@/utils/transactionFee.utils';
+import { clampBuyQuantity } from '@/utils/buyQuantity';
 
 export type TradeSide = 'buy' | 'sell';
 
@@ -54,6 +55,17 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 			setTouched(false);
 		}
 	}, [open]);
+
+	const handleBlur = () => {
+		setTouched(true);
+		const normalized = amountText.trim();
+		if (normalized) {
+			const clampedResult = clampBuyQuantity(amountText);
+			if (clampedResult.adjusted) {
+				setAmountText(clampedResult.value.toString());
+			}
+		}
+	};
 
 	const parsedAmount = useMemo(() => {
 		const normalized = amountText.trim();
@@ -136,7 +148,7 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 							setAmountText(event.target.value);
 							setTouched(true);
 						}}
-						onBlur={() => setTouched(true)}
+						onBlur={handleBlur}
 						disabled={isSubmitting}
 						className={cn(
 							'w-full rounded-xl border bg-white/[0.04] px-3 py-2 text-white outline-none transition-colors',

@@ -27,11 +27,20 @@ export interface Course {
 	priceHistory?: number[];
 }
 
+export type CourseSortOption =
+	| 'featured'
+	| 'price-asc'
+	| 'price-desc'
+	| 'supply-desc';
+
 export interface GetCoursesParams {
 	page?: number;
 	limit?: number;
 	category?: string;
 	search?: string;
+	min_price?: number;
+	max_price?: number;
+	sort?: Exclude<CourseSortOption, 'featured'>;
 }
 
 class CourseService extends BaseApiService {

@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useDebounce } from '@/hooks/useDebounce';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { LayoutGroup, motion } from 'framer-motion';
 import { useSearchParams } from 'react-router';
 import { courseService, type Course } from '@/services/course.service';
@@ -8,11 +10,12 @@ import SearchBar from '@/components/common/SearchBar';
 import StickyFilterBar from '@/components/common/StickyFilterBar';
 import CreatorCard from '@/components/common/CreatorCard';
 import {
-	CreatorGridSkeleton,
 	CreatorHoldingsListSkeleton,
 	CreatorProfileHeaderSkeleton,
 } from '@/components/common/CreatorSkeleton';
+import { CreatorCardGridSkeleton } from '@/components/common/CreatorCardSkeleton';
 import EmptyState from '@/components/common/EmptyState';
+import HoldingsEmptyState from '@/components/common/HoldingsEmptyState';
 import EmptySearchSuggestions from '@/components/common/EmptySearchSuggestions';
 import SectionDivider from '@/components/common/SectionDivider';
 import { Button } from '@/components/ui/button';
@@ -23,6 +26,7 @@ import CompactSectionSubtitle from '@/components/common/CompactSectionSubtitle';
 import CreatorProfileInfoGrid from '@/components/common/CreatorProfileInfoGrid';
 import CreatorLabeledStatRow from '@/components/common/CreatorLabeledStatRow';
 import MiniStatChip from '@/components/common/MiniStatChip';
+import { FeaturedCreatorAudienceChip } from '@/components/common/FeaturedCreatorAudienceChip';
 import MarketplaceSection from '@/components/common/MarketplaceSection';
 import { ProfileTabPillGroup } from '@/components/common/ProfileTabPill';
 import CreatorBreadcrumb from '@/components/common/CreatorBreadcrumb';
@@ -62,11 +66,13 @@ import {
 } from '@/utils/portfolioValue.utils';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { CREATOR_LIST_SORT_LAYOUT_TRANSITION } from '@/utils/creatorListSortTransition';
-import { AlertCircle, ChevronDown, RefreshCw } from 'lucide-react';
+import { creatorListKey } from '@/utils/creatorListKey.utils';
+import { AlertCircle, Check, ChevronDown, Copy, RefreshCw } from 'lucide-react';
 import ClearedFiltersEmptyState from '@/components/common/ClearedFiltersEmptyState';
 import CreatorListPagination from '@/components/common/CreatorListPagination';
 import CreatorListGroupSeparator from '@/components/common/CreatorListGroupSeparator';
 import MarketplaceSidebar from '@/components/common/MarketplaceSidebar';
+import { copyTextToClipboard } from '@/utils/clipboard.utils';
 
 const FEATURED_CREATOR_FACTS = [
 	{ label: 'Membership', value: 'Collectors Circle' },
@@ -77,28 +83,8 @@ const FEATURED_CREATOR_FACTS = [
 
 const FEATURED_CREATOR_FOLLOWER_COUNT: number | null = null;
 const FEATURED_CREATOR_KEY_HOLDER_COUNT = 0;
-
-const getFeaturedCreatorKeyHolderCopy = (count: number | null) => {
-	if (count == null) {
-		return {
-			value: 'Key holders unavailable',
-			explanation: 'Key holder data is not available yet.',
-		};
-	}
-
-	if (count === 0) {
-		return {
-			value: 'No key holders yet',
-			explanation:
-				'This creator has not unlocked any key holders yet. Be the first to buy a key and start the collector base.',
-		};
-	}
-
-	return {
-		value: `${formatCompactNumber(count)} key holders`,
-		explanation: 'Number of wallets that currently hold at least one key.',
-	};
-};
+const FEATURED_CREATOR_STELLAR_ADDRESS =
+	'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5';
 
 // Fallback demo data in case API fails
 const DEMO_CREATORS: Course[] = [
@@ -117,7 +103,6 @@ const DEMO_CREATORS: Course[] = [
 		isPinned: true,
 		thumbnail:
 			'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop',
-		priceHistory: [480_000, 490_000, 495_000, 500_000, 510_000, 505_000, 500_000],
 	},
 	{
 		id: '2',
@@ -133,7 +118,6 @@ const DEMO_CREATORS: Course[] = [
 		isPinned: true,
 		thumbnail:
 			'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop',
-		priceHistory: [1_100_000, 1_150_000, 1_180_000, 1_200_000, 1_250_000, 1_220_000, 1_200_000],
 	},
 	{
 		id: '3',
@@ -147,7 +131,6 @@ const DEMO_CREATORS: Course[] = [
 		isVerified: false,
 		thumbnail:
 			'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop',
-		priceHistory: [900_000, 880_000, 860_000, 850_000, 840_000, 830_000, 800_000],
 	},
 	{
 		id: '4',
@@ -163,7 +146,6 @@ const DEMO_CREATORS: Course[] = [
 		isVerified: true,
 		thumbnail:
 			'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop',
-		priceHistory: [350_000, 360_000, 370_000, 380_000, 390_000, 395_000, 400_000],
 	},
 	{
 		id: '5',
@@ -177,7 +159,6 @@ const DEMO_CREATORS: Course[] = [
 		isVerified: false,
 		thumbnail:
 			'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop',
-		priceHistory: [1_000_000, 1_050_000, 1_080_000, 1_100_000, 1_120_000, 1_140_000, 1_150_000],
 	},
 	{
 		id: '6',
@@ -191,13 +172,13 @@ const DEMO_CREATORS: Course[] = [
 		isVerified: true,
 		thumbnail:
 			'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&h=400&fit=crop',
-		priceHistory: [600_000, 610_000, 620_000, 630_000, 640_000, 650_000, 700_000],
 	},
 ];
 
 const CREATOR_SORT_KEY = 'accesslayer.creator-sort';
 const CREATOR_PAGE_KEY = 'accesslayer.creator-page';
 const CREATOR_SCROLL_KEY = 'accesslayer.creator-scrollY';
+const CREATOR_LIST_MODE_KEY = 'accesslayer.creator-list-mode';
 const MAX_CREATOR_FETCH_RETRIES = 3;
 const BASE_RETRY_DELAY_MS = 800;
 const PAGE_SIZE = 6;
@@ -234,7 +215,24 @@ const isCreatorRefreshShortcut = (event: KeyboardEvent) =>
 	!event.shiftKey &&
 	event.key.toLowerCase() === 'r';
 
-type SortOption = 'price-desc' | 'holders' | 'newest';
+const isTradeShortcut = (event: KeyboardEvent) =>
+	!event.ctrlKey &&
+	!event.metaKey &&
+	!event.altKey &&
+	!event.shiftKey &&
+	event.key.toLowerCase() === 't';
+
+const toPriceFilterValue = (value: string) => {
+	if (!value.trim()) return undefined;
+	const parsed = Number(value);
+	return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
+};
+
+const getCreatorListKey = (creator: Course) =>
+	creatorListKey(Number(creator.id));
+
+type SortOption = 'featured' | 'price-asc' | 'price-desc' | 'supply-desc';
+type CreatorListMode = 'pagination' | 'infinite';
 
 interface CreatorProfileLoadErrorProps {
 	onRetry: () => void;
@@ -278,6 +276,10 @@ const CreatorProfileLoadError: React.FC<CreatorProfileLoadErrorProps> = ({
 
 function LandingPage() {
 	const [creators, setCreators] = useState<Course[]>([]);
+	// Creators used for wallet holdings; kept separate from the marketplace
+	// list so an empty API holdings response can show zero positions while
+	// the browse grid still falls back to demo creators.
+	const [holdingsCreators, setHoldingsCreators] = useState<Course[]>([]);
 	// Last successful fetch timestamp (#301). `null` means we've never
 	// resolved a load yet — the staleness helper treats that as "stale"
 	// so the warning surfaces if the load hangs.
@@ -289,6 +291,9 @@ function LandingPage() {
 	const [isFilterLoading, setIsFilterLoading] = useState(false);
 	const [searchParams, setSearchParams] = useSearchParams();
 	const [searchQuery, setSearchQuery] = useState('');
+	const debouncedSearchQuery = useDebounce(searchQuery, 300);
+	const [minPriceFilter, setMinPriceFilter] = useState('');
+	const [maxPriceFilter, setMaxPriceFilter] = useState('');
 	const searchQueryRef = useRef<string>('');
 	const sortOptionRef = useRef<SortOption>('featured');
 	const PROFILE_TABS = ['overview', 'creations', 'collectors', 'activity'];
@@ -302,10 +307,14 @@ function LandingPage() {
 	const [tradeSide, setTradeSide] = useState<TradeSide>('buy');
 	const [tradeDialogOpen, setTradeDialogOpen] = useState(false);
 	const [tradeSubmitting, setTradeSubmitting] = useState(false);
+	const [stellarAddressCopied, setStellarAddressCopied] = useState(false);
 	const prefersReducedMotion = usePrefersReducedMotion();
 	const [sortOption, setSortOption] = useState<SortOption>(() => {
 		const sort = searchParams.get('sort') as SortOption | null;
-		if (sort && ['price-desc', 'holders', 'newest'].includes(sort)) {
+		if (
+			sort &&
+			['featured', 'price-asc', 'price-desc', 'supply-desc'].includes(sort)
+		) {
 			sortOptionRef.current = sort;
 			return sort;
 		}
@@ -313,12 +322,12 @@ function LandingPage() {
 			const saved = window.localStorage.getItem(
 				CREATOR_SORT_KEY
 			) as SortOption | null;
-			if (saved && ['price-desc', 'holders', 'newest'].includes(saved)) {
+			if (saved) {
 				sortOptionRef.current = saved;
 				return saved;
 			}
 		}
-		return 'holders';
+		return 'featured';
 	});
 	const [fetchRetryAttempt, setFetchRetryAttempt] = useState(0);
 	const [fetchRequestId, setFetchRequestId] = useState(0);
@@ -338,6 +347,14 @@ function LandingPage() {
 		const parsed = saved ? Number(saved) : 0;
 		return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 	});
+	// Infinite scroll is an alternative to pagination for browsing the
+	// creator list; the chosen mode is remembered across visits.
+	const [listMode, setListMode] = useState<CreatorListMode>(() => {
+		if (typeof window === 'undefined') return 'pagination';
+		const saved = window.localStorage.getItem(CREATOR_LIST_MODE_KEY);
+		return saved === 'infinite' ? 'infinite' : 'pagination';
+	});
+	const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 	const pendingScrollRestoreRef = useRef<number | null>(null);
 	const shortcutConfirmationTimerRef = useRef<number | null>(null);
 
@@ -376,7 +393,7 @@ function LandingPage() {
 		} else {
 			newParams.delete('q');
 		}
-		if (sortOption !== 'holders') {
+		if (sortOption !== 'featured') {
 			newParams.set('sort', sortOption);
 		} else {
 			newParams.delete('sort');
@@ -392,10 +409,16 @@ function LandingPage() {
 			setSearchQuery('');
 		}
 		const sort = searchParams.get('sort') as SortOption | null;
-		if (sort && ['price-desc', 'holders', 'newest'].includes(sort) && sort !== sortOptionRef.current) {
+		if (
+			sort &&
+			['featured', 'price-asc', 'price-desc', 'supply-desc'].includes(
+				sort
+			) &&
+			sort !== sortOptionRef.current
+		) {
 			setSortOption(sort);
-		} else if (sort === null && sortOptionRef.current !== 'holders') {
-			setSortOption('holders');
+		} else if (sort === null && sortOptionRef.current !== 'featured') {
+			setSortOption('featured');
 		}
 	}, [searchParams]);
 
@@ -403,6 +426,11 @@ function LandingPage() {
 		if (typeof window === 'undefined') return;
 		window.sessionStorage.setItem(CREATOR_PAGE_KEY, String(page));
 	}, [page]);
+
+	useEffect(() => {
+		if (typeof window === 'undefined') return;
+		window.localStorage.setItem(CREATOR_LIST_MODE_KEY, listMode);
+	}, [listMode]);
 
 	useEffect(() => {
 		if (typeof window === 'undefined') return;
@@ -453,17 +481,36 @@ function LandingPage() {
 			setShowRetryBanner(false);
 			setFinalFetchError('');
 			try {
-				const data = await courseService.getCourses();
+				const minPrice = toPriceFilterValue(minPriceFilter);
+				const maxPrice = toPriceFilterValue(maxPriceFilter);
+				const params = {
+					...(minPrice !== undefined ? { min_price: minPrice } : {}),
+					...(maxPrice !== undefined ? { max_price: maxPrice } : {}),
+					...(debouncedSearchQuery.trim()
+						? { search: debouncedSearchQuery.trim() }
+						: {}),
+					...(sortOption !== 'featured' ? { sort: sortOption } : {}),
+				};
+				const data = await courseService.getCourses(
+					Object.keys(params).length > 0 ? params : undefined
+				);
 				if (data && data.length > 0) {
 					setCreators(data);
+					setHoldingsCreators(data);
 				} else {
 					setCreators(DEMO_CREATORS);
+					setHoldingsCreators([]);
 				}
 				// Track the last successful fetch so the stale-data warning
 				// has a baseline to compare against (#301).
 				setCreatorsFetchedAt(Date.now());
 				setFetchRetryAttempt(0);
 			} catch {
+				if (fetchRetryAttempt === 0) {
+					showToast.error(
+						'Unable to load creators. Check your connection and try again.'
+					);
+				}
 				if (fetchRetryAttempt < MAX_CREATOR_FETCH_RETRIES) {
 					const nextAttempt = fetchRetryAttempt + 1;
 					setShowRetryBanner(true);
@@ -482,13 +529,21 @@ function LandingPage() {
 				setShowRetryBanner(false);
 				setFetchRetryAttempt(0);
 				setCreators(DEMO_CREATORS);
+				setHoldingsCreators(DEMO_CREATORS);
 			} finally {
-				setTimeout(() => setIsLoading(false), 800);
+				setIsLoading(false);
 			}
 		};
 
 		fetchCreators();
-	}, [fetchRetryAttempt, fetchRequestId, sortOption]);
+	}, [
+		fetchRetryAttempt,
+		fetchRequestId,
+		maxPriceFilter,
+		minPriceFilter,
+		debouncedSearchQuery,
+		sortOption,
+	]);
 
 	const searchSuggestions = useMemo(() => {
 		const fromCategories = creators
@@ -520,21 +575,17 @@ function LandingPage() {
 			resolveCreatorKeyPriceStroops(creator) ?? 0;
 
 		switch (sortOption) {
+			case 'price-asc':
+				sorted.sort((a, b) => priceOf(a) - priceOf(b));
+				break;
 			case 'price-desc':
 				sorted.sort((a, b) => priceOf(b) - priceOf(a));
 				break;
-			case 'holders':
+			case 'supply-desc':
 				sorted.sort(
 					(a, b) =>
 						(b.creatorShareSupply ?? 0) - (a.creatorShareSupply ?? 0)
 				);
-				break;
-			case 'newest':
-				sorted.sort((a, b) => {
-					const aTime = a.joinedAt ? new Date(a.joinedAt).getTime() : 0;
-					const bTime = b.joinedAt ? new Date(b.joinedAt).getTime() : 0;
-					return bTime - aTime;
-				});
 				break;
 			default:
 				break;
@@ -556,7 +607,15 @@ function LandingPage() {
 
 	useEffect(() => {
 		setPage(0);
+		setVisibleCount(PAGE_SIZE);
 	}, [trimmedSearchQuery, sortOption]);
+
+	// Switching modes starts the newly active view from the top of the
+	// filtered results rather than wherever the other mode left off.
+	useEffect(() => {
+		setPage(0);
+		setVisibleCount(PAGE_SIZE);
+	}, [listMode]);
 
 	const totalPages = Math.max(
 		1,
@@ -567,10 +626,29 @@ function LandingPage() {
 		const start = safePage * PAGE_SIZE;
 		return filteredCreators.slice(start, start + PAGE_SIZE);
 	}, [filteredCreators, safePage]);
-	const featuredCreatorKeyHolderCopy = getFeaturedCreatorKeyHolderCopy(
-		FEATURED_CREATOR_KEY_HOLDER_COUNT
+	const safeVisibleCount = Math.min(
+		Math.max(visibleCount, PAGE_SIZE),
+		Math.max(filteredCreators.length, PAGE_SIZE)
 	);
+	const infiniteCreators = useMemo(
+		() => filteredCreators.slice(0, safeVisibleCount),
+		[filteredCreators, safeVisibleCount]
+	);
+	const hasMoreInfinite = safeVisibleCount < filteredCreators.length;
+	const visibleCreators =
+		listMode === 'infinite' ? infiniteCreators : pagedCreators;
 
+	const handleLoadMoreInfinite = useCallback(() => {
+		setVisibleCount(count =>
+			Math.min(count + PAGE_SIZE, filteredCreators.length)
+		);
+	}, [filteredCreators.length]);
+
+	const infiniteScrollSentinelRef = useInfiniteScroll<HTMLDivElement>({
+		enabled: listMode === 'infinite' && !isLoading && !isFilterLoading,
+		hasMore: hasMoreInfinite,
+		onLoadMore: handleLoadMoreInfinite,
+	});
 	// Choose the featured creator from live data when available, otherwise
 	// fall back to the demo featured creator. This keeps the profile panel
 	// reactive to backend updates (supply, price, etc.).
@@ -591,6 +669,10 @@ function LandingPage() {
 	};
 
 	const handleResetSearch = () => setSearchQuery('');
+	const handleClearPriceFilters = () => {
+		setMinPriceFilter('');
+		setMaxPriceFilter('');
+	};
 
 	const handleRetryCreatorFetch = useCallback(() => {
 		setFinalFetchError('');
@@ -658,7 +740,7 @@ function LandingPage() {
 
 	const heldKeyPositions = useMemo(
 		() =>
-			creators.map((creator, index) => ({
+			holdingsCreators.map((creator, index) => ({
 				creatorId: creator.id,
 				quantity:
 					index === 0
@@ -669,7 +751,7 @@ function LandingPage() {
 				isPriceLoading: isPriceRefreshing,
 				isPriceStale: creatorsAreStale,
 			})),
-		[creators, creatorsAreStale, featuredHoldings, isPriceRefreshing]
+		[holdingsCreators, creatorsAreStale, featuredHoldings, isPriceRefreshing]
 	);
 	const portfolioValue = useMemo(
 		() => calculatePortfolioValue(heldKeyPositions),
@@ -689,9 +771,40 @@ function LandingPage() {
 		displayedPortfolioValue
 	);
 
-	const openTradeDialog = (side: TradeSide) => {
+	const openTradeDialog = useCallback((side: TradeSide) => {
 		setTradeSide(side);
 		setTradeDialogOpen(true);
+	}, []);
+
+	// Issue 554: T key opens the trade panel from the creator profile page.
+	useEffect(() => {
+		const handleTradeShortcut = (event: KeyboardEvent) => {
+			if (
+				event.defaultPrevented ||
+				event.repeat ||
+				!isTradeShortcut(event) ||
+				isEditableShortcutTarget(event.target)
+			) {
+				return;
+			}
+
+			event.preventDefault();
+			openTradeDialog('buy');
+		};
+
+		window.addEventListener('keydown', handleTradeShortcut);
+		return () => window.removeEventListener('keydown', handleTradeShortcut);
+	}, [openTradeDialog]);
+
+	const handleCopyStellarAddress = async () => {
+		try {
+			await copyTextToClipboard(FEATURED_CREATOR_STELLAR_ADDRESS);
+			setStellarAddressCopied(true);
+			showToast.success('Address copied to clipboard', { duration: 2000 });
+			setTimeout(() => setStellarAddressCopied(false), 2000);
+		} catch {
+			showToast.error('Could not copy the Stellar address. Please copy it manually.');
+		}
 	};
 
 	const handleConfirmTrade = async (amount: number) => {
@@ -824,10 +937,66 @@ function LandingPage() {
 									}
 									className="h-9 rounded-lg border border-white/15 bg-slate-950/80 px-3 text-sm text-white outline-none focus:border-amber-400/60"
 								>
-									<option value="price-desc">Price: High to low</option>
-									<option value="holders">Holders</option>
-									<option value="newest">Newest</option>
+									<option value="featured">Featured</option>
+									<option value="price-asc">Price: Low to high</option>
+									<option value="price-desc">
+										Price: High to low
+									</option>
+									<option value="supply-desc">
+										Supply: High to low
+									</option>
 								</select>
+							</div>
+							<div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
+								<div>
+									<label
+										htmlFor="min-price"
+										className="marketplace-label-muted text-xs font-semibold uppercase tracking-[0.16em]"
+									>
+										Min price
+									</label>
+									<input
+										id="min-price"
+										type="number"
+										min="0"
+										step="0.01"
+										inputMode="decimal"
+										value={minPriceFilter}
+										onChange={event =>
+											setMinPriceFilter(event.target.value)
+										}
+										className="mt-1 h-10 w-full rounded-lg border border-white/15 bg-slate-950/80 px-3 text-sm text-white outline-none focus:border-amber-400/60"
+									/>
+								</div>
+								<div>
+									<label
+										htmlFor="max-price"
+										className="marketplace-label-muted text-xs font-semibold uppercase tracking-[0.16em]"
+									>
+										Max price
+									</label>
+									<input
+										id="max-price"
+										type="number"
+										min="0"
+										step="0.01"
+										inputMode="decimal"
+										value={maxPriceFilter}
+										onChange={event =>
+											setMaxPriceFilter(event.target.value)
+										}
+										className="mt-1 h-10 w-full rounded-lg border border-white/15 bg-slate-950/80 px-3 text-sm text-white outline-none focus:border-amber-400/60"
+									/>
+								</div>
+								<Button
+									type="button"
+									variant="outline"
+									onClick={handleClearPriceFilters}
+									disabled={!minPriceFilter && !maxPriceFilter}
+									className="h-10 rounded-lg border-white/10 bg-white/5 px-4 text-xs font-bold uppercase tracking-[0.16em] text-white"
+								>
+									Clear
+								</Button>
 							</div>
 							<div
 								aria-label={`${CREATOR_REFRESH_SHORTCUT_LABEL} refreshes creator list data`}
@@ -836,7 +1005,10 @@ function LandingPage() {
 								<span className="font-semibold uppercase tracking-[0.16em] text-white/40">
 									Shortcut
 								</span>
-								<span className="inline-flex items-center gap-1" aria-hidden="true">
+								<span
+									className="inline-flex items-center gap-1"
+									aria-hidden="true"
+								>
 									<Kbd className="border border-white/10 bg-white/10 text-white/70">
 										Ctrl/Cmd
 									</Kbd>
@@ -862,9 +1034,30 @@ function LandingPage() {
 								className="mb-7"
 								supportingTextClassName="max-w-3xl"
 							/>
+							{showRetryBanner && (
+								<TransactionRetryNotice
+									title="Loading live creators"
+									message={getFetchRetryHelperCopy(
+										fetchRetryAttempt + 1,
+										MAX_CREATOR_FETCH_RETRIES + 1
+									)}
+									retryLabel={FETCH_RETRY_ACTION_LABEL}
+									onRetry={handleRetryCreatorFetch}
+									className="mb-6"
+								/>
+							)}
+							{finalFetchError && (
+								<div className="mb-6 rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
+									{finalFetchError}
+								</div>
+							)}
 
 							{isLoading ? (
-								<CreatorGridSkeleton count={6} />
+								// #421: replace the generic grid skeleton with
+								// CreatorCardGridSkeleton so each placeholder
+								// mirrors CreatorCard's dimensions and prevents
+								// layout shift when real cards arrive.
+								<CreatorCardGridSkeleton count={6} />
 							) : isFilterLoading ? (
 								<div className="space-y-4">
 									<div className="flex items-center justify-center gap-2 py-8">
@@ -874,9 +1067,9 @@ function LandingPage() {
 										</span>
 									</div>
 									<div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 opacity-50">
-										{pagedCreators.map(creator => (
+										{visibleCreators.map(creator => (
 											<CreatorCard
-												key={creator.id}
+												key={getCreatorListKey(creator)}
 												creator={creator}
 												isPriceRefreshing={isPriceRefreshing}
 											/>
@@ -885,22 +1078,6 @@ function LandingPage() {
 								</div>
 							) : filteredCreators.length > 0 ? (
 								<div className="space-y-4">
-									{showRetryBanner && (
-										<TransactionRetryNotice
-											title="Loading live creators"
-											message={getFetchRetryHelperCopy(
-												fetchRetryAttempt + 1,
-												MAX_CREATOR_FETCH_RETRIES + 1
-											)}
-											retryLabel={FETCH_RETRY_ACTION_LABEL}
-											onRetry={handleRetryCreatorFetch}
-										/>
-									)}
-									{finalFetchError && (
-										<div className="rounded-xl border border-amber-500/25 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-											{finalFetchError}
-										</div>
-									)}
 									{/* #301: subtle inline stale-data warning that
 									appears once the cached creator data is past
 									the 60s freshness window. The hook drives a
@@ -913,17 +1090,50 @@ function LandingPage() {
 											className="self-start"
 										/>
 									)}
+									<div className="flex items-center justify-center gap-2">
+										<span className="marketplace-label-muted text-xs font-semibold uppercase tracking-[0.16em]">
+											List mode
+										</span>
+										<div className="inline-flex rounded-lg border border-white/10 bg-white/5 p-1">
+											<button
+												type="button"
+												onClick={() => setListMode('pagination')}
+												aria-pressed={listMode === 'pagination'}
+												className={cn(
+													'rounded-md px-3 py-1.5 text-xs font-bold uppercase tracking-[0.14em] transition-colors',
+													listMode === 'pagination'
+														? 'bg-amber-400 text-slate-950'
+														: 'text-white/60 hover:text-white'
+												)}
+											>
+												Pages
+											</button>
+											<button
+												type="button"
+												onClick={() => setListMode('infinite')}
+												aria-pressed={listMode === 'infinite'}
+												className={cn(
+													'rounded-md px-3 py-1.5 text-xs font-bold uppercase tracking-[0.14em] transition-colors',
+													listMode === 'infinite'
+														? 'bg-amber-400 text-slate-950'
+														: 'text-white/60 hover:text-white'
+												)}
+											>
+												Infinite scroll
+											</button>
+										</div>
+									</div>
 									<LayoutGroup>
 										<div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
 											{/* Render pinned creators first */}
-											{pagedCreators
+											{visibleCreators
 												.filter(creator => creator.isPinned)
 												.map((creator, index) => (
 													// #300: staggered entry animation; the
 													// helper no-ops on prefers-reduced-motion.
 													// #355: layout transition when sort order changes.
 													<motion.div
-														key={creator.id}
+														key={getCreatorListKey(creator)}
 														layout={!prefersReducedMotion}
 														transition={
 															CREATOR_LIST_SORT_LAYOUT_TRANSITION
@@ -935,23 +1145,29 @@ function LandingPage() {
 													>
 														<CreatorCard
 															creator={creator}
-															isPriceRefreshing={isPriceRefreshing}
+															isPriceRefreshing={
+																isPriceRefreshing
+															}
 														/>
 													</motion.div>
 												))}
 
 											{/* Separator between pinned and unpinned */}
-											{pagedCreators.some(creator => creator.isPinned) &&
-												pagedCreators.some(creator => !creator.isPinned) && (
+											{visibleCreators.some(
+												creator => creator.isPinned
+											) &&
+												visibleCreators.some(
+													creator => !creator.isPinned
+												) && (
 													<CreatorListGroupSeparator label="Other creators" />
 												)}
 
 											{/* Render unpinned creators */}
-											{pagedCreators
+											{visibleCreators
 												.filter(creator => !creator.isPinned)
 												.map((creator, index) => (
 													<motion.div
-														key={creator.id}
+														key={getCreatorListKey(creator)}
 														layout={!prefersReducedMotion}
 														transition={
 															CREATOR_LIST_SORT_LAYOUT_TRANSITION
@@ -963,45 +1179,99 @@ function LandingPage() {
 													>
 														<CreatorCard
 															creator={creator}
-															isPriceRefreshing={isPriceRefreshing}
+															isPriceRefreshing={
+																isPriceRefreshing
+															}
 														/>
 													</motion.div>
 												))}
 										</div>
 									</LayoutGroup>
-									<CreatorListPagination
-										page={safePage}
-										totalPages={totalPages}
-										onPageChange={handlePageChange}
-										className="mt-8"
-									/>
-									{safePage < totalPages - 1 && (
-										<div className="mt-4 flex justify-center">
-											<Button
-												type="button"
-												variant="outline"
-												onClick={() =>
-													handlePageChange(safePage + 1)
-												}
-												aria-label="Load more creators"
-												className="sr-only rounded-full border-white/10 bg-white/5 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white shadow-none focus:not-sr-only focus:flex focus:items-center focus:gap-2 focus:outline-none focus:ring-2 focus:ring-amber-400/60 focus:ring-offset-2 focus:ring-offset-slate-950"
-											>
-												<ChevronDown
-													className="size-4"
+									{listMode === 'pagination' ? (
+										<>
+											<CreatorListPagination
+												page={safePage}
+												totalPages={totalPages}
+												onPageChange={handlePageChange}
+												className="mt-8"
+											/>
+											{safePage < totalPages - 1 && (
+												<div className="mt-4 flex justify-center">
+													<Button
+														type="button"
+														variant="outline"
+														onClick={() =>
+															handlePageChange(safePage + 1)
+														}
+														aria-label="Load more creators"
+														className="sr-only rounded-full border-white/10 bg-white/5 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white shadow-none focus:not-sr-only focus:flex focus:items-center focus:gap-2 focus:outline-none focus:ring-2 focus:ring-amber-400/60 focus:ring-offset-2 focus:ring-offset-slate-950"
+													>
+														<ChevronDown
+															className="size-4"
+															aria-hidden="true"
+														/>
+														Load more creators
+													</Button>
+												</div>
+											)}
+											{safePage >= totalPages - 1 && (
+												<p
+													role="status"
+													aria-live="polite"
+													className="mt-4 text-center text-xs font-semibold uppercase tracking-[0.18em] text-white/45"
+												>
+													{`You've reached the end — ${formatNumber(filteredCreators.length)} creator${filteredCreators.length === 1 ? '' : 's'} shown.`}
+												</p>
+											)}
+										</>
+									) : (
+										<>
+											{/* Invisible sentinel that triggers the next
+											page load once it scrolls into view. The
+											visible button beneath it is the accessible
+											fallback for keyboard users and browsers
+											without IntersectionObserver support. */}
+											{hasMoreInfinite && (
+												<div
+													ref={infiniteScrollSentinelRef}
 													aria-hidden="true"
+													className="h-px w-full"
 												/>
-												Load more creators
-											</Button>
-										</div>
-									)}
-									{safePage >= totalPages - 1 && (
-										<p
-											role="status"
-											aria-live="polite"
-											className="mt-4 text-center text-xs font-semibold uppercase tracking-[0.18em] text-white/45"
-										>
-											{`You've reached the end — ${formatNumber(filteredCreators.length)} creator${filteredCreators.length === 1 ? '' : 's'} shown.`}
-										</p>
+											)}
+											<div
+												role="status"
+												aria-live="polite"
+												className="mt-8 flex flex-col items-center gap-3"
+											>
+												{hasMoreInfinite ? (
+													<>
+														<span className="sr-only">
+															Loading more creators
+														</span>
+														<div
+															className="size-5 animate-spin rounded-full border-2 border-amber-400/20 border-t-amber-400"
+															aria-hidden="true"
+														/>
+														<Button
+															type="button"
+															variant="outline"
+															onClick={handleLoadMoreInfinite}
+															className="rounded-full border-white/10 bg-white/5 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white"
+														>
+															<ChevronDown
+																className="size-4"
+																aria-hidden="true"
+															/>
+															Load more creators
+														</Button>
+													</>
+												) : (
+													<p className="text-center text-xs font-semibold uppercase tracking-[0.18em] text-white/45">
+														{`You've reached the end — ${formatNumber(filteredCreators.length)} creator${filteredCreators.length === 1 ? '' : 's'} shown.`}
+													</p>
+												)}
+											</div>
+										</>
 									)}
 								</div>
 							) : (
@@ -1079,10 +1349,21 @@ function LandingPage() {
 								<p className="mt-2 text-xs leading-relaxed text-white/55">
 									{portfolioValueHelperText}
 								</p>
+								<span
+									data-testid="holdings-header-entry-count"
+									className="sr-only"
+								>
+									{displayedPortfolioValue.heldPositionCount}
+								</span>
 							</div>
 						</div>
 						{isLoading ? (
 							<CreatorHoldingsListSkeleton className="mt-6" />
+						) : heldKeyPositions.filter(
+								position => position.quantity && position.quantity > 0
+						  ).length === 0 ? (
+							// Settled empty only — skeleton covers loading so this never flashes.
+							<HoldingsEmptyState />
 						) : (
 							<div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
 								{heldKeyPositions
@@ -1200,11 +1481,12 @@ function LandingPage() {
 												value="Verified creator"
 												explanation="Creator has completed identity verification with Access Layer."
 											/>
-											<MiniStatChip
-												label="Audience"
-												value={featuredCreatorKeyHolderCopy.value}
-												explanation={
-													featuredCreatorKeyHolderCopy.explanation
+											<FeaturedCreatorAudienceChip
+												creatorId="featured-creator"
+												fetchHolderCount={() =>
+													Promise.resolve(
+														FEATURED_CREATOR_KEY_HOLDER_COUNT
+													)
 												}
 											/>
 											<MiniStatChip
@@ -1282,6 +1564,42 @@ function LandingPage() {
 													)} shares available`
 										}
 									/>
+									{/* Issue 557: Stellar address with copy button */}
+									<div className="flex items-center justify-between gap-2 rounded-xl border border-white/8 bg-white/[0.03] px-3 py-2">
+										<div className="min-w-0 flex-1">
+											<p className="mb-0.5 text-[0.6rem] font-bold uppercase tracking-[0.2em] text-white/40">
+												Stellar Address
+											</p>
+											<p
+												className="truncate font-mono text-xs text-white/70"
+												title={FEATURED_CREATOR_STELLAR_ADDRESS}
+											>
+												{FEATURED_CREATOR_STELLAR_ADDRESS}
+											</p>
+										</div>
+										<button
+											type="button"
+											onClick={handleCopyStellarAddress}
+											aria-label={
+												stellarAddressCopied
+													? 'Stellar address copied'
+													: 'Copy Stellar address'
+											}
+											className="inline-flex size-8 shrink-0 items-center justify-center rounded-md bg-white/5 text-white/40 transition-colors hover:bg-white/10 hover:text-white"
+										>
+											{stellarAddressCopied ? (
+												<Check
+													className="size-4 text-emerald-400"
+													aria-hidden="true"
+												/>
+											) : (
+												<Copy
+													className="size-4"
+													aria-hidden="true"
+												/>
+											)}
+										</button>
+									</div>
 									{isNetworkMismatch && <NetworkMismatchBanner />}
 									<div className="relative">
 										<div
@@ -1419,7 +1737,6 @@ function LandingPage() {
 				creatorName="Alex Rivers"
 				availableHoldings={featuredHoldings}
 				keyPriceStroops={resolveCreatorKeyPriceStroops(featuredCreator)}
-				currentSupply={featuredCreator.creatorShareSupply}
 				isSubmitting={tradeSubmitting}
 				onOpenChange={setTradeDialogOpen}
 				onConfirm={handleConfirmTrade}

@@ -1,46 +1,99 @@
-# Environment variables
+# Environment Variable Guide
 
-This reference lists every `VITE_` variable consumed by the client, along with its purpose, whether it is required or optional, and its default value when optional.
+This guide explains how to add a new client environment variable safely and consistently in Access Layer Client.
 
-## .env setup
+The client is built with Vite, so any value that must be available in browser code must use the `VITE_` prefix. Values without that prefix are not exposed to the client bundle.
 
-1. Copy `.env.example` to a local `.env` file.
-2. Adjust any values needed for your environment.
-3. Restart the dev server after changing `.env`.
+## Files involved
 
-```bash
-cp .env.example .env
-pnpm dev
+| File                     | Purpose                                                                                                          |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------- |
+| `.env.example`           | Documents every supported variable and provides safe local defaults or blank optional placeholders.              |
+| `src/utils/env.utils.ts` | Validates environment variables at startup with Zod and exports the typed `env` object used by application code. |
+| `.env`                   | Local developer overrides. This file should not be committed.                                                    |
+
+## Add a new variable
+
+1. Add the variable to `.env.example`.
+2. Add validation for the variable in `src/utils/env.utils.ts`.
+3. Pass the raw `import.meta.env` value into the `envSchema.parse(...)` call in `src/utils/env.utils.ts`.
+4. Import the validated `env` object in application code.
+5. Avoid reading `import.meta.env` directly from components, hooks, or service files.
+
+## Declaration pattern
+
+Add the new variable to `.env.example` near related settings. Use a short comment that explains what the value controls and whether it is required.
+
+```env
+# Feature flag for the creator discovery experiment. Use `true` to enable locally.
+VITE_ENABLE_CREATOR_DISCOVERY=false
 ```
 
-## Variables
+Prefer safe development defaults when the app can run without secrets. Leave optional third-party keys blank if a contributor can work without them.
 
-| Variable                    | Description                                      | Required | Default                    |
-| --------------------------- | ------------------------------------------------ | -------- | -------------------------- |
-| `VITE_BACKEND_URL`          | Base URL for API requests.                       | No       | `/api`                     |
-| `VITE_DEFAULT_CHAIN_ID`     | Chain ID used when configuring Web3 connections. | No       | `84532`                    |
-| `VITE_ANVIL_RPC_URL`        | RPC endpoint for local Anvil development.        | No       | `http://127.0.0.1:8545`    |
-| `VITE_BASE_SEPOLIA_RPC_URL` | RPC endpoint for Base Sepolia.                   | No       | `https://sepolia.base.org` |
-| `VITE_SEPOLIA_RPC_URL`      | RPC endpoint for Sepolia.                        | No       | _not set_                  |
-| `VITE_MAINNET_RPC_URL`      | RPC endpoint for mainnet.                        | No       | _not set_                  |
-| `VITE_UTM_SOURCE`           | UTM source appended to shared profile links.     | No       | _not set_                  |
-| `VITE_UTM_MEDIUM`           | UTM medium appended to shared profile links.     | No       | _not set_                  |
-| `VITE_UTM_CAMPAIGN`         | UTM campaign appended to shared profile links.   | No       | _not set_                  |
-| `VITE_UTM_TERM`             | UTM term appended to shared profile links.       | No       | _not set_                  |
-| `VITE_UTM_CONTENT`          | UTM content appended to shared profile links.    | No       | _not set_                  |
+## Runtime validation pattern
 
-## Build-time vs runtime
+All supported variables should be declared in `src/utils/env.utils.ts` so missing or malformed configuration is caught in one place.
 
-These variables are read at build time via Vite's `import.meta.env`. Because Vite inlines `import.meta.env` values during the build, changing them after build requires rebuilding the client.
+```ts
+const envSchema = z.object({
+	VITE_ENABLE_CREATOR_DISCOVERY: z.coerce.boolean().default(false),
+});
 
-- `VITE_BACKEND_URL`
-- `VITE_DEFAULT_CHAIN_ID`
-- `VITE_ANVIL_RPC_URL`
-- `VITE_BASE_SEPOLIA_RPC_URL`
-- `VITE_SEPOLIA_RPC_URL`
-- `VITE_MAINNET_RPC_URL`
-- `VITE_UTM_SOURCE`
-- `VITE_UTM_MEDIUM`
-- `VITE_UTM_CAMPAIGN`
-- `VITE_UTM_TERM`
-- `VITE_UTM_CONTENT`
+export const env = envSchema.parse({
+	VITE_ENABLE_CREATOR_DISCOVERY: import.meta.env.VITE_ENABLE_CREATOR_DISCOVERY,
+});
+```
+
+Use the Zod type that matches how the app consumes the value:
+
+| Value type      | Validation example                              |
+| --------------- | ----------------------------------------------- |
+| Required string | `z.string().min(1, "VITE_API_KEY is required")` |
+| Optional string | `z.string().optional()`                         |
+| Number          | `z.coerce.number().default(84532)`              |
+| Boolean flag    | `z.coerce.boolean().default(false)`             |
+
+If a value is required for the app to start, avoid a silent fallback. Use `.min(1, "... is required")` or another explicit validation rule so the startup error points to the missing variable.
+
+## Access pattern in application code
+
+Import `env` from the validation module and read the typed value from there:
+
+```ts
+import { env } from '@/utils/env.utils';
+
+if (env.VITE_ENABLE_CREATOR_DISCOVERY) {
+	// Render or enable the feature.
+}
+```
+
+This keeps validation, defaults, and type coercion centralized.
+
+## Anti-pattern: direct component access
+
+Do not import or read `import.meta.env` directly in components, hooks, services, or utilities outside the validation module.
+
+```tsx
+// Avoid this.
+const backendUrl = import.meta.env.VITE_BACKEND_URL;
+```
+
+Direct access bypasses schema validation, makes defaults inconsistent, and spreads environment knowledge across the app. Use `env` instead:
+
+```tsx
+import { env } from '@/utils/env.utils';
+
+const backendUrl = env.VITE_BACKEND_URL;
+```
+
+## Required vs optional checklist
+
+Use this checklist before opening a PR that adds a new variable:
+
+- The variable is listed in `.env.example`.
+- The variable has a clear comment describing its purpose.
+- Required values fail fast in `src/utils/env.utils.ts` with a useful error.
+- Optional values use `.optional()` or a safe `.default(...)`.
+- Application code reads from `env`, not `import.meta.env`.
+- The variable name starts with `VITE_` if browser code needs it.
