@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useDebounce } from '@/hooks/useDebounce';
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { LayoutGroup, motion } from 'framer-motion';
 import { useSearchParams } from 'react-router';
 import { courseService, type Course } from '@/services/course.service';
@@ -177,6 +178,7 @@ const DEMO_CREATORS: Course[] = [
 const CREATOR_SORT_KEY = 'accesslayer.creator-sort';
 const CREATOR_PAGE_KEY = 'accesslayer.creator-page';
 const CREATOR_SCROLL_KEY = 'accesslayer.creator-scrollY';
+const CREATOR_LIST_MODE_KEY = 'accesslayer.creator-list-mode';
 const MAX_CREATOR_FETCH_RETRIES = 3;
 const BASE_RETRY_DELAY_MS = 800;
 const PAGE_SIZE = 6;
@@ -230,6 +232,7 @@ const getCreatorListKey = (creator: Course) =>
 	creatorListKey(Number(creator.id));
 
 type SortOption = 'featured' | 'price-asc' | 'price-desc' | 'supply-desc';
+type CreatorListMode = 'pagination' | 'infinite';
 
 interface CreatorProfileLoadErrorProps {
 	onRetry: () => void;
@@ -344,6 +347,14 @@ function LandingPage() {
 		const parsed = saved ? Number(saved) : 0;
 		return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
 	});
+	// Infinite scroll is an alternative to pagination for browsing the
+	// creator list; the chosen mode is remembered across visits.
+	const [listMode, setListMode] = useState<CreatorListMode>(() => {
+		if (typeof window === 'undefined') return 'pagination';
+		const saved = window.localStorage.getItem(CREATOR_LIST_MODE_KEY);
+		return saved === 'infinite' ? 'infinite' : 'pagination';
+	});
+	const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 	const pendingScrollRestoreRef = useRef<number | null>(null);
 	const shortcutConfirmationTimerRef = useRef<number | null>(null);
 
@@ -415,6 +426,11 @@ function LandingPage() {
 		if (typeof window === 'undefined') return;
 		window.sessionStorage.setItem(CREATOR_PAGE_KEY, String(page));
 	}, [page]);
+
+	useEffect(() => {
+		if (typeof window === 'undefined') return;
+		window.localStorage.setItem(CREATOR_LIST_MODE_KEY, listMode);
+	}, [listMode]);
 
 	useEffect(() => {
 		if (typeof window === 'undefined') return;
@@ -591,7 +607,15 @@ function LandingPage() {
 
 	useEffect(() => {
 		setPage(0);
+		setVisibleCount(PAGE_SIZE);
 	}, [trimmedSearchQuery, sortOption]);
+
+	// Switching modes starts the newly active view from the top of the
+	// filtered results rather than wherever the other mode left off.
+	useEffect(() => {
+		setPage(0);
+		setVisibleCount(PAGE_SIZE);
+	}, [listMode]);
 
 	const totalPages = Math.max(
 		1,
@@ -602,6 +626,29 @@ function LandingPage() {
 		const start = safePage * PAGE_SIZE;
 		return filteredCreators.slice(start, start + PAGE_SIZE);
 	}, [filteredCreators, safePage]);
+	const safeVisibleCount = Math.min(
+		Math.max(visibleCount, PAGE_SIZE),
+		Math.max(filteredCreators.length, PAGE_SIZE)
+	);
+	const infiniteCreators = useMemo(
+		() => filteredCreators.slice(0, safeVisibleCount),
+		[filteredCreators, safeVisibleCount]
+	);
+	const hasMoreInfinite = safeVisibleCount < filteredCreators.length;
+	const visibleCreators =
+		listMode === 'infinite' ? infiniteCreators : pagedCreators;
+
+	const handleLoadMoreInfinite = useCallback(() => {
+		setVisibleCount(count =>
+			Math.min(count + PAGE_SIZE, filteredCreators.length)
+		);
+	}, [filteredCreators.length]);
+
+	const infiniteScrollSentinelRef = useInfiniteScroll<HTMLDivElement>({
+		enabled: listMode === 'infinite' && !isLoading && !isFilterLoading,
+		hasMore: hasMoreInfinite,
+		onLoadMore: handleLoadMoreInfinite,
+	});
 	// Choose the featured creator from live data when available, otherwise
 	// fall back to the demo featured creator. This keeps the profile panel
 	// reactive to backend updates (supply, price, etc.).
@@ -1020,7 +1067,7 @@ function LandingPage() {
 										</span>
 									</div>
 									<div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 opacity-50">
-										{pagedCreators.map(creator => (
+										{visibleCreators.map(creator => (
 											<CreatorCard
 												key={getCreatorListKey(creator)}
 												creator={creator}
@@ -1043,10 +1090,43 @@ function LandingPage() {
 											className="self-start"
 										/>
 									)}
+									<div className="flex items-center justify-center gap-2">
+										<span className="marketplace-label-muted text-xs font-semibold uppercase tracking-[0.16em]">
+											List mode
+										</span>
+										<div className="inline-flex rounded-lg border border-white/10 bg-white/5 p-1">
+											<button
+												type="button"
+												onClick={() => setListMode('pagination')}
+												aria-pressed={listMode === 'pagination'}
+												className={cn(
+													'rounded-md px-3 py-1.5 text-xs font-bold uppercase tracking-[0.14em] transition-colors',
+													listMode === 'pagination'
+														? 'bg-amber-400 text-slate-950'
+														: 'text-white/60 hover:text-white'
+												)}
+											>
+												Pages
+											</button>
+											<button
+												type="button"
+												onClick={() => setListMode('infinite')}
+												aria-pressed={listMode === 'infinite'}
+												className={cn(
+													'rounded-md px-3 py-1.5 text-xs font-bold uppercase tracking-[0.14em] transition-colors',
+													listMode === 'infinite'
+														? 'bg-amber-400 text-slate-950'
+														: 'text-white/60 hover:text-white'
+												)}
+											>
+												Infinite scroll
+											</button>
+										</div>
+									</div>
 									<LayoutGroup>
 										<div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3">
 											{/* Render pinned creators first */}
-											{pagedCreators
+											{visibleCreators
 												.filter(creator => creator.isPinned)
 												.map((creator, index) => (
 													// #300: staggered entry animation; the
@@ -1073,17 +1153,17 @@ function LandingPage() {
 												))}
 
 											{/* Separator between pinned and unpinned */}
-											{pagedCreators.some(
+											{visibleCreators.some(
 												creator => creator.isPinned
 											) &&
-												pagedCreators.some(
+												visibleCreators.some(
 													creator => !creator.isPinned
 												) && (
 													<CreatorListGroupSeparator label="Other creators" />
 												)}
 
 											{/* Render unpinned creators */}
-											{pagedCreators
+											{visibleCreators
 												.filter(creator => !creator.isPinned)
 												.map((creator, index) => (
 													<motion.div
@@ -1107,39 +1187,91 @@ function LandingPage() {
 												))}
 										</div>
 									</LayoutGroup>
-									<CreatorListPagination
-										page={safePage}
-										totalPages={totalPages}
-										onPageChange={handlePageChange}
-										className="mt-8"
-									/>
-									{safePage < totalPages - 1 && (
-										<div className="mt-4 flex justify-center">
-											<Button
-												type="button"
-												variant="outline"
-												onClick={() =>
-													handlePageChange(safePage + 1)
-												}
-												aria-label="Load more creators"
-												className="sr-only rounded-full border-white/10 bg-white/5 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white shadow-none focus:not-sr-only focus:flex focus:items-center focus:gap-2 focus:outline-none focus:ring-2 focus:ring-amber-400/60 focus:ring-offset-2 focus:ring-offset-slate-950"
-											>
-												<ChevronDown
-													className="size-4"
+									{listMode === 'pagination' ? (
+										<>
+											<CreatorListPagination
+												page={safePage}
+												totalPages={totalPages}
+												onPageChange={handlePageChange}
+												className="mt-8"
+											/>
+											{safePage < totalPages - 1 && (
+												<div className="mt-4 flex justify-center">
+													<Button
+														type="button"
+														variant="outline"
+														onClick={() =>
+															handlePageChange(safePage + 1)
+														}
+														aria-label="Load more creators"
+														className="sr-only rounded-full border-white/10 bg-white/5 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white shadow-none focus:not-sr-only focus:flex focus:items-center focus:gap-2 focus:outline-none focus:ring-2 focus:ring-amber-400/60 focus:ring-offset-2 focus:ring-offset-slate-950"
+													>
+														<ChevronDown
+															className="size-4"
+															aria-hidden="true"
+														/>
+														Load more creators
+													</Button>
+												</div>
+											)}
+											{safePage >= totalPages - 1 && (
+												<p
+													role="status"
+													aria-live="polite"
+													className="mt-4 text-center text-xs font-semibold uppercase tracking-[0.18em] text-white/45"
+												>
+													{`You've reached the end — ${formatNumber(filteredCreators.length)} creator${filteredCreators.length === 1 ? '' : 's'} shown.`}
+												</p>
+											)}
+										</>
+									) : (
+										<>
+											{/* Invisible sentinel that triggers the next
+											page load once it scrolls into view. The
+											visible button beneath it is the accessible
+											fallback for keyboard users and browsers
+											without IntersectionObserver support. */}
+											{hasMoreInfinite && (
+												<div
+													ref={infiniteScrollSentinelRef}
 													aria-hidden="true"
+													className="h-px w-full"
 												/>
-												Load more creators
-											</Button>
-										</div>
-									)}
-									{safePage >= totalPages - 1 && (
-										<p
-											role="status"
-											aria-live="polite"
-											className="mt-4 text-center text-xs font-semibold uppercase tracking-[0.18em] text-white/45"
-										>
-											{`You've reached the end — ${formatNumber(filteredCreators.length)} creator${filteredCreators.length === 1 ? '' : 's'} shown.`}
-										</p>
+											)}
+											<div
+												role="status"
+												aria-live="polite"
+												className="mt-8 flex flex-col items-center gap-3"
+											>
+												{hasMoreInfinite ? (
+													<>
+														<span className="sr-only">
+															Loading more creators
+														</span>
+														<div
+															className="size-5 animate-spin rounded-full border-2 border-amber-400/20 border-t-amber-400"
+															aria-hidden="true"
+														/>
+														<Button
+															type="button"
+															variant="outline"
+															onClick={handleLoadMoreInfinite}
+															className="rounded-full border-white/10 bg-white/5 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-white"
+														>
+															<ChevronDown
+																className="size-4"
+																aria-hidden="true"
+															/>
+															Load more creators
+														</Button>
+													</>
+												) : (
+													<p className="text-center text-xs font-semibold uppercase tracking-[0.18em] text-white/45">
+														{`You've reached the end — ${formatNumber(filteredCreators.length)} creator${filteredCreators.length === 1 ? '' : 's'} shown.`}
+													</p>
+												)}
+											</div>
+										</>
 									)}
 								</div>
 							) : (

@@ -2,6 +2,7 @@ import Lenis from 'lenis';
 import { useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { createBrowserRouter, RouterProvider } from 'react-router';
+import AppErrorBoundary from './components/common/AppErrorBoundary';
 import { useNavigationTiming } from './hooks/useNavigationTiming';
 import { routes } from './routes';
 
@@ -24,7 +25,7 @@ function App() {
 	}, []);
 
 	return (
-		<>
+		<AppErrorBoundary>
 			<Toaster
 				toastOptions={{
 					ariaProps: {
@@ -34,7 +35,7 @@ function App() {
 				}}
 			/>
 			<RouterProvider router={router} />
-		</>
+		</AppErrorBoundary>
 	);
 }
 
