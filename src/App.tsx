@@ -2,11 +2,14 @@ import Lenis from 'lenis';
 import { useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { createBrowserRouter, RouterProvider } from 'react-router';
+import { useNavigationTiming } from './hooks/useNavigationTiming';
 import { routes } from './routes';
 
 const router = createBrowserRouter(routes);
 
 function App() {
+	useNavigationTiming();
+
 	useEffect(() => {
 		const lenis = new Lenis({
 			duration: 1.2,
