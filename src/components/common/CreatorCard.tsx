@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useEffect, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 import type { Course } from '@/services/course.service';
 import { cn } from '@/lib/utils';
@@ -122,9 +122,9 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 			cardElement.addEventListener('keydown', handleKeyDown);
 			return () => cardElement.removeEventListener('keydown', handleKeyDown);
 		}
-	}, [isConnected, isNetworkMismatch, displayCreatorName]);
+	}, [isConnected, isNetworkMismatch, displayCreatorName, handleBuy]);
 
-	const runPurchaseAttempt = () => {
+	const runPurchaseAttempt = useCallback(() => {
 		setTransactionState('submitting');
 		trackTransactionEvent('tx_submitted', {
 			creatorId: creator.id,
@@ -171,7 +171,7 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 				setTransactionState('idle');
 			}, 1800);
 		}, 1500);
-	};
+	}, [creator.id, displayCreatorName, trackTransactionEvent, setTransactionState]);
 
 	const isRecentlyActive = (creator.volume24h ?? 0) > 0;
 	const keyPriceDisplay = formatCreatorKeyPriceDisplay(creator);
@@ -202,7 +202,7 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 		}
 	};
 
-	const handleBuy = () => {
+	const handleBuy = useCallback(() => {
 		if (!isConnected) {
 			toast.error('Please connect your wallet to purchase keys', {
 				duration: 4000,
@@ -222,7 +222,7 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 		});
 		// Implementation for contract interaction would go here
 		runPurchaseAttempt();
-	};
+	}, [isConnected, isNetworkMismatch, expectedChainName, displayCreatorName, runPurchaseAttempt]);
 
 	return (
 		<div
