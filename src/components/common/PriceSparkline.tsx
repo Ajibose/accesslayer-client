@@ -8,6 +8,7 @@ interface PriceSparklineProps {
 }
 
 const POSITIVE_COLOR = '#34d399';
+const NEGATIVE_COLOR = '#ef4444';
 const NEUTRAL_COLOR = 'currentColor';
 
 export function PriceSparkline({
@@ -18,10 +19,16 @@ export function PriceSparkline({
 }: PriceSparklineProps) {
 	if (dataPoints.length === 0) return null;
 
-	const lineColor =
-		dataPoints.length >= 2 && dataPoints[dataPoints.length - 1] > dataPoints[0]
-			? POSITIVE_COLOR
-			: NEUTRAL_COLOR;
+	const getLineColor = () => {
+		if (dataPoints.length < 2) return NEUTRAL_COLOR;
+		const last = dataPoints[dataPoints.length - 1];
+		const first = dataPoints[0];
+		if (last > first) return POSITIVE_COLOR;
+		if (last < first) return NEGATIVE_COLOR;
+		return NEUTRAL_COLOR;
+	};
+
+	const lineColor = getLineColor();
 
 	const padding = 2;
 	const innerWidth = width - padding * 2;
