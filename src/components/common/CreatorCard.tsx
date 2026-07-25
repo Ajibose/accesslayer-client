@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect, useCallback } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 import type { Course } from '@/services/course.service';
 import { cn } from '@/lib/utils';
@@ -109,20 +109,7 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 	const cardRef = useRef<HTMLDivElement>(null);
 
 	// Keyboard shortcut for quick buy (press 'b' when card is focused)
-	useEffect(() => {
-		const handleKeyDown = (e: KeyboardEvent) => {
-			// Only trigger if 'b' is pressed and card is focused
-			if (e.key === 'b' || e.key === 'B') {
-				handleBuy();
-			}
-		};
 
-		const cardElement = cardRef.current;
-		if (cardElement) {
-			cardElement.addEventListener('keydown', handleKeyDown);
-			return () => cardElement.removeEventListener('keydown', handleKeyDown);
-		}
-	}, [isConnected, isNetworkMismatch, displayCreatorName, handleBuy]);
 
 	const runPurchaseAttempt = useCallback(() => {
 		setTransactionState('submitting');
