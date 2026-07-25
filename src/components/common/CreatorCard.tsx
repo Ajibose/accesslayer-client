@@ -1,4 +1,4 @@
-import { useRef, useState, useEffect } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 import type { Course } from '@/services/course.service';
 import { cn } from '@/lib/utils';
@@ -109,22 +109,9 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 	const cardRef = useRef<HTMLDivElement>(null);
 
 	// Keyboard shortcut for quick buy (press 'b' when card is focused)
-	useEffect(() => {
-		const handleKeyDown = (e: KeyboardEvent) => {
-			// Only trigger if 'b' is pressed and card is focused
-			if (e.key === 'b' || e.key === 'B') {
-				handleBuy();
-			}
-		};
 
-		const cardElement = cardRef.current;
-		if (cardElement) {
-			cardElement.addEventListener('keydown', handleKeyDown);
-			return () => cardElement.removeEventListener('keydown', handleKeyDown);
-		}
-	}, [isConnected, isNetworkMismatch, displayCreatorName]);
 
-	const runPurchaseAttempt = () => {
+	const runPurchaseAttempt = useCallback(() => {
 		setTransactionState('submitting');
 		trackTransactionEvent('tx_submitted', {
 			creatorId: creator.id,
@@ -171,7 +158,7 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 				setTransactionState('idle');
 			}, 1800);
 		}, 1500);
-	};
+	}, [creator.id, displayCreatorName, trackTransactionEvent, setTransactionState]);
 
 	const isRecentlyActive = (creator.volume24h ?? 0) > 0;
 	const keyPriceDisplay = formatCreatorKeyPriceDisplay(creator);
@@ -202,7 +189,7 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 		}
 	};
 
-	const handleBuy = () => {
+	const handleBuy = useCallback(() => {
 		if (!isConnected) {
 			toast.error('Please connect your wallet to purchase keys', {
 				duration: 4000,
@@ -222,7 +209,7 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 		});
 		// Implementation for contract interaction would go here
 		runPurchaseAttempt();
-	};
+	}, [isConnected, isNetworkMismatch, expectedChainName, displayCreatorName, runPurchaseAttempt]);
 
 	return (
 		<div
