@@ -117,6 +117,7 @@ const DEMO_CREATORS: Course[] = [
 		isPinned: true,
 		thumbnail:
 			'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop',
+		priceHistory: [480_000, 490_000, 495_000, 500_000, 510_000, 505_000, 500_000],
 	},
 	{
 		id: '2',
@@ -132,6 +133,7 @@ const DEMO_CREATORS: Course[] = [
 		isPinned: true,
 		thumbnail:
 			'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop',
+		priceHistory: [1_100_000, 1_150_000, 1_180_000, 1_200_000, 1_250_000, 1_220_000, 1_200_000],
 	},
 	{
 		id: '3',
@@ -145,6 +147,7 @@ const DEMO_CREATORS: Course[] = [
 		isVerified: false,
 		thumbnail:
 			'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400&h=400&fit=crop',
+		priceHistory: [900_000, 880_000, 860_000, 850_000, 840_000, 830_000, 800_000],
 	},
 	{
 		id: '4',
@@ -160,6 +163,7 @@ const DEMO_CREATORS: Course[] = [
 		isVerified: true,
 		thumbnail:
 			'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400&h=400&fit=crop',
+		priceHistory: [350_000, 360_000, 370_000, 380_000, 390_000, 395_000, 400_000],
 	},
 	{
 		id: '5',
@@ -173,6 +177,7 @@ const DEMO_CREATORS: Course[] = [
 		isVerified: false,
 		thumbnail:
 			'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400&h=400&fit=crop',
+		priceHistory: [1_000_000, 1_050_000, 1_080_000, 1_100_000, 1_120_000, 1_140_000, 1_150_000],
 	},
 	{
 		id: '6',
@@ -186,6 +191,7 @@ const DEMO_CREATORS: Course[] = [
 		isVerified: true,
 		thumbnail:
 			'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400&h=400&fit=crop',
+		priceHistory: [600_000, 610_000, 620_000, 630_000, 640_000, 650_000, 700_000],
 	},
 ];
 
@@ -228,7 +234,7 @@ const isCreatorRefreshShortcut = (event: KeyboardEvent) =>
 	!event.shiftKey &&
 	event.key.toLowerCase() === 'r';
 
-type SortOption = 'featured' | 'price-asc' | 'price-desc' | 'supply-desc';
+type SortOption = 'price-desc' | 'holders' | 'newest';
 
 interface CreatorProfileLoadErrorProps {
 	onRetry: () => void;
@@ -299,7 +305,7 @@ function LandingPage() {
 	const prefersReducedMotion = usePrefersReducedMotion();
 	const [sortOption, setSortOption] = useState<SortOption>(() => {
 		const sort = searchParams.get('sort') as SortOption | null;
-		if (sort && ['featured', 'price-asc', 'price-desc', 'supply-desc'].includes(sort)) {
+		if (sort && ['price-desc', 'holders', 'newest'].includes(sort)) {
 			sortOptionRef.current = sort;
 			return sort;
 		}
@@ -307,12 +313,12 @@ function LandingPage() {
 			const saved = window.localStorage.getItem(
 				CREATOR_SORT_KEY
 			) as SortOption | null;
-			if (saved) {
+			if (saved && ['price-desc', 'holders', 'newest'].includes(saved)) {
 				sortOptionRef.current = saved;
 				return saved;
 			}
 		}
-		return 'featured';
+		return 'holders';
 	});
 	const [fetchRetryAttempt, setFetchRetryAttempt] = useState(0);
 	const [fetchRequestId, setFetchRequestId] = useState(0);
@@ -370,7 +376,7 @@ function LandingPage() {
 		} else {
 			newParams.delete('q');
 		}
-		if (sortOption !== 'featured') {
+		if (sortOption !== 'holders') {
 			newParams.set('sort', sortOption);
 		} else {
 			newParams.delete('sort');
@@ -386,10 +392,10 @@ function LandingPage() {
 			setSearchQuery('');
 		}
 		const sort = searchParams.get('sort') as SortOption | null;
-		if (sort && ['featured', 'price-asc', 'price-desc', 'supply-desc'].includes(sort) && sort !== sortOptionRef.current) {
+		if (sort && ['price-desc', 'holders', 'newest'].includes(sort) && sort !== sortOptionRef.current) {
 			setSortOption(sort);
-		} else if (sort === null && sortOptionRef.current !== 'featured') {
-			setSortOption('featured');
+		} else if (sort === null && sortOptionRef.current !== 'holders') {
+			setSortOption('holders');
 		}
 	}, [searchParams]);
 
@@ -482,7 +488,7 @@ function LandingPage() {
 		};
 
 		fetchCreators();
-	}, [fetchRetryAttempt, fetchRequestId]);
+	}, [fetchRetryAttempt, fetchRequestId, sortOption]);
 
 	const searchSuggestions = useMemo(() => {
 		const fromCategories = creators
@@ -514,17 +520,21 @@ function LandingPage() {
 			resolveCreatorKeyPriceStroops(creator) ?? 0;
 
 		switch (sortOption) {
-			case 'price-asc':
-				sorted.sort((a, b) => priceOf(a) - priceOf(b));
-				break;
 			case 'price-desc':
 				sorted.sort((a, b) => priceOf(b) - priceOf(a));
 				break;
-			case 'supply-desc':
+			case 'holders':
 				sorted.sort(
 					(a, b) =>
 						(b.creatorShareSupply ?? 0) - (a.creatorShareSupply ?? 0)
 				);
+				break;
+			case 'newest':
+				sorted.sort((a, b) => {
+					const aTime = a.joinedAt ? new Date(a.joinedAt).getTime() : 0;
+					const bTime = b.joinedAt ? new Date(b.joinedAt).getTime() : 0;
+					return bTime - aTime;
+				});
 				break;
 			default:
 				break;
@@ -814,14 +824,9 @@ function LandingPage() {
 									}
 									className="h-9 rounded-lg border border-white/15 bg-slate-950/80 px-3 text-sm text-white outline-none focus:border-amber-400/60"
 								>
-									<option value="featured">Featured</option>
-									<option value="price-asc">Price: Low to high</option>
-									<option value="price-desc">
-										Price: High to low
-									</option>
-									<option value="supply-desc">
-										Supply: High to low
-									</option>
+									<option value="price-desc">Price: High to low</option>
+									<option value="holders">Holders</option>
+									<option value="newest">Newest</option>
 								</select>
 							</div>
 							<div
