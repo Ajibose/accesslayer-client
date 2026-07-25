@@ -232,16 +232,6 @@ const getCreatorListKey = (creator: Course) =>
 
 type SortOption = 'featured' | 'price-asc' | 'price-desc' | 'supply-desc';
 
-const CreatorProfileLoadError: React.FC<CreatorProfileLoadErrorProps> = ({
-	onRetry,
-	isRetrying,
-}) => (
-	<CreatorProfileErrorState
-		onRetry={onRetry}
-		isRetrying={isRetrying}
-	/>
-);
-
 function LandingPage() {
 	const [creators, setCreators] = useState<Course[]>([]);
 	// Creators used for wallet holdings; kept separate from the marketplace
@@ -1275,7 +1265,7 @@ function LandingPage() {
 						minHeight={300}
 					>
 						{finalFetchError ? (
-							<CreatorProfileLoadError
+							<CreatorProfileErrorState
 								onRetry={handleRetryCreatorFetch}
 								isRetrying={isLoading}
 							/>
