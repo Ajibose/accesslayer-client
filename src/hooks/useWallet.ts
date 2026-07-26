@@ -32,7 +32,7 @@ export function useTradeMutation(address: string) {
 
 	const mutation = useMutation({
 		mutationKey: ['trade', address],
-		mutationFn: async ({ creatorId: _creatorId, amount: _amount }: TradeVariables) => {
+		mutationFn: async () => {
 			await new Promise<void>(resolve => window.setTimeout(resolve, 900));
 			return { success: true as const };
 		},
