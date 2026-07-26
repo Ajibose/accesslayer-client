@@ -38,6 +38,7 @@ import TradeDialog, { type TradeSide } from '@/components/common/TradeDialog';
 import NetworkMismatchBanner from '@/components/common/NetworkMismatchBanner';
 import StellarConnectionQualityBadge from '@/components/common/StellarConnectionQualityBadge';
 import { useNetworkMismatch } from '@/hooks/useNetworkMismatch';
+import { useTradeMutation, useWalletHoldings } from '@/hooks/useWallet';
 import showToast from '@/utils/toast.util';
 import { getSignatureErrorMessage } from '@/utils/errorHandling.utils';
 import { formatCompactNumber, formatNumber } from '@/utils/numberFormat.utils';
@@ -185,6 +186,7 @@ const BASE_RETRY_DELAY_MS = 800;
 const PAGE_SIZE = 6;
 const FETCH_RETRY_ACTION_LABEL = 'Try again';
 const DEMO_HELD_KEY_QUANTITIES = [0, 2, 1] as const;
+const DEMO_WALLET_ADDRESS = 'demo-wallet-address';
 const FINAL_FETCH_ERROR_COPY =
 	'Unable to load live creators right now. Showing fallback creators.';
 const CREATOR_REFRESH_SHORTCUT_LABEL = 'Ctrl/Cmd + Alt + R';
@@ -714,20 +716,28 @@ function LandingPage() {
 		handleRetryCreatorFetch();
 	};
 
+	const tradeMutation = useTradeMutation(DEMO_WALLET_ADDRESS);
+	const { data: cachedHoldings = [] } = useWalletHoldings(DEMO_WALLET_ADDRESS);
+
 	const heldKeyPositions = useMemo(
 		() =>
-			holdingsCreators.map((creator, index) => ({
-				creatorId: creator.id,
-				quantity:
+			holdingsCreators.map((creator, index) => {
+				const cached = cachedHoldings.find(h => h.creatorId === creator.id);
+				const baseQuantity =
 					index === 0
 						? featuredHoldings
-						: (DEMO_HELD_KEY_QUANTITIES[index] ?? 0),
-				priceStroops: creator.priceStroops,
-				price: creator.price,
-				isPriceLoading: isPriceRefreshing,
-				isPriceStale: creatorsAreStale,
-			})),
-		[holdingsCreators, creatorsAreStale, featuredHoldings, isPriceRefreshing]
+						: (DEMO_HELD_KEY_QUANTITIES[index] ?? 0);
+				return {
+					creatorId: creator.id,
+					quantity: cached?.quantity ?? baseQuantity,
+					priceStroops: creator.priceStroops,
+					price: creator.price,
+					isPriceLoading: isPriceRefreshing,
+					isPriceStale: creatorsAreStale,
+					pending: cached?.pending ?? false,
+				};
+			}),
+		[holdingsCreators, creatorsAreStale, featuredHoldings, isPriceRefreshing, cachedHoldings]
 	);
 	const portfolioValue = useMemo(
 		() => calculatePortfolioValue(heldKeyPositions),
@@ -784,37 +794,37 @@ function LandingPage() {
 	};
 
 	const handleConfirmTrade = async (amount: number) => {
-		const previousHoldings = featuredHoldings;
-		const creatorName = featuredCreator?.title ?? 'Unknown creator';
 		setTradeSubmitting(true);
 
 		try {
-			showToast.loading(
-				tradeSide === 'buy'
-					? `Submitting buy for ${amount} key${amount === 1 ? '' : 's'}...`
-					: `Submitting sell for ${amount} key${amount === 1 ? '' : 's'}...`
-			);
-
-			await new Promise<void>(resolve => window.setTimeout(resolve, 900));
-
-			setFeaturedHoldings(current =>
-				tradeSide === 'buy'
-					? current + amount
-					: Math.max(0, current - amount)
-			);
-
-			await new Promise<void>(resolve => window.setTimeout(resolve, 250));
-
-			showToast.transactionSuccess(
-				'Trade confirmed',
-				tradeSide === 'buy'
-					? `Bought ${formatNumber(amount)} key${amount === 1 ? '' : 's'} from ${creatorName}`
-					: `Sold ${formatNumber(amount)} key${amount === 1 ? '' : 's'} from ${creatorName}`
-			);
+			if (tradeSide === 'buy') {
+				showToast.loading(
+					`Submitting buy for ${amount} key${amount === 1 ? '' : 's'}...`
+				);
+				await tradeMutation.mutateAsync({
+					creatorId: '1',
+					amount,
+					priceStroops: resolveCreatorKeyPriceStroops(featuredCreator),
+					price: featuredCreator?.price,
+				});
+				setFeaturedHoldings(current => current + amount);
+			} else {
+				showToast.loading(
+					`Submitting sell for ${amount} key${amount === 1 ? '' : 's'}...`
+				);
+				await new Promise<void>(resolve => window.setTimeout(resolve, 900));
+				setFeaturedHoldings(current => Math.max(0, current - amount));
+				await new Promise<void>(resolve => window.setTimeout(resolve, 250));
+				showToast.transactionSuccess(
+					'Trade confirmed',
+					`Holdings refreshed: -${formatNumber(amount)} keys.`
+				);
+			}
 			setTradeDialogOpen(false);
 		} catch (error) {
-			setFeaturedHoldings(previousHoldings);
-			showToast.error(getSignatureErrorMessage(error));
+			if (tradeSide === 'sell') {
+				showToast.error(getSignatureErrorMessage(error));
+			}
 		} finally {
 			setTradeSubmitting(false);
 		}
@@ -1355,12 +1365,21 @@ function LandingPage() {
 										return (
 											<div
 												key={position.creatorId}
-												className="rounded-2xl border border-white/10 bg-white/[0.03] p-4"
+												className={cn(
+													'rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-opacity',
+													position.pending && 'opacity-60'
+												)}
 											>
 												<div className="truncate text-sm font-bold text-white">
 													{creator?.title ?? 'Unknown creator'}
 												</div>
 												<div className="mt-1 text-xs text-white/55">
+													{position.pending && (
+														<span className="mr-2 inline-flex items-center gap-1 rounded-full bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-400">
+															<span className="size-2.5 animate-spin rounded-full border-2 border-amber-400/30 border-t-amber-400" />
+															Pending
+														</span>
+													)}
 													{formatNumber(position.quantity)} keys ·{' '}
 													{position.isPriceLoading
 														? 'Refreshing price'
