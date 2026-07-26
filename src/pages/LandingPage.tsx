@@ -31,6 +31,7 @@ import MarketplaceSection from '@/components/common/MarketplaceSection';
 import { ProfileTabPillGroup } from '@/components/common/ProfileTabPill';
 import CreatorBreadcrumb from '@/components/common/CreatorBreadcrumb';
 import CreatorProfileHeader from '@/components/common/CreatorProfileHeader';
+import CreatorProfileErrorState from '@/components/common/CreatorProfileErrorState';
 import TransactionRetryNotice from '@/components/common/TransactionRetryNotice';
 import EmptyTransactionTimelineState from '@/components/common/EmptyTransactionTimelineState';
 import TradeDialog, { type TradeSide } from '@/components/common/TradeDialog';
@@ -68,7 +69,7 @@ import {
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { CREATOR_LIST_SORT_LAYOUT_TRANSITION } from '@/utils/creatorListSortTransition';
 import { creatorListKey } from '@/utils/creatorListKey.utils';
-import { AlertCircle, Check, ChevronDown, Copy, RefreshCw } from 'lucide-react';
+import { Check, ChevronDown, Copy, RefreshCw } from 'lucide-react';
 import ClearedFiltersEmptyState from '@/components/common/ClearedFiltersEmptyState';
 import CreatorListPagination from '@/components/common/CreatorListPagination';
 import CreatorListGroupSeparator from '@/components/common/CreatorListGroupSeparator';
@@ -236,46 +237,6 @@ const getCreatorListKey = (creator: Course) =>
 type SortOption = 'featured' | 'price-asc' | 'price-desc' | 'supply-desc';
 type CreatorListMode = 'pagination' | 'infinite';
 
-interface CreatorProfileLoadErrorProps {
-	onRetry: () => void;
-	isRetrying: boolean;
-}
-
-const CreatorProfileLoadError: React.FC<CreatorProfileLoadErrorProps> = ({
-	onRetry,
-	isRetrying,
-}) => (
-	<div
-		role="alert"
-		aria-live="polite"
-		className="marketplace-card-surface flex min-h-[18rem] flex-col items-center justify-center rounded-[2rem] border p-6 text-center shadow-[0_24px_80px_-60px_rgba(8,17,31,0.95)] md:p-8"
-	>
-		<div className="mb-4 rounded-full border border-red-400/25 bg-red-500/10 p-3 text-red-200">
-			<AlertCircle className="size-6" aria-hidden="true" />
-		</div>
-		<h2 className="font-grotesque text-2xl font-black tracking-tight text-white">
-			Unable to load this creator profile
-		</h2>
-		<p className="mt-2 max-w-md font-jakarta text-sm leading-relaxed text-white/60">
-			We couldn't load the latest profile details. Check your connection and
-			try again.
-		</p>
-		<Button
-			type="button"
-			variant="outline"
-			onClick={onRetry}
-			disabled={isRetrying}
-			className="mt-5 rounded-xl border-white/10 bg-white/5 px-5 font-bold text-white transition-all hover:border-amber-500/30 hover:bg-amber-500/10"
-		>
-			<RefreshCw
-				className={isRetrying ? 'size-4 animate-spin' : 'size-4'}
-				aria-hidden="true"
-			/>
-			{isRetrying ? 'Retrying...' : 'Retry'}
-		</Button>
-	</div>
-);
-
 function LandingPage() {
 	const [creators, setCreators] = useState<Course[]>([]);
 	// Creators used for wallet holdings; kept separate from the marketplace
@@ -292,7 +253,9 @@ function LandingPage() {
 	const [isLoading, setIsLoading] = useState(true);
 	const [isFilterLoading, setIsFilterLoading] = useState(false);
 	const [searchParams, setSearchParams] = useSearchParams();
-	const [searchQuery, setSearchQuery] = useState('');
+	const [searchQuery, setSearchQuery] = useState(() => {
+		return searchParams.get('search') ?? searchParams.get('q') ?? '';
+	});
 	const debouncedSearchQuery = useDebounce(searchQuery, 300);
 	const [minPriceFilter, setMinPriceFilter] = useState('');
 	const [maxPriceFilter, setMaxPriceFilter] = useState('');
@@ -361,13 +324,8 @@ function LandingPage() {
 	const shortcutConfirmationTimerRef = useRef<number | null>(null);
 
 	// Keep refs in sync with state
-	useEffect(() => {
-		searchQueryRef.current = searchQuery;
-	}, [searchQuery]);
-
-	useEffect(() => {
-		sortOptionRef.current = sortOption;
-	}, [sortOption]);
+	searchQueryRef.current = searchQuery;
+	sortOptionRef.current = sortOption;
 
 	// Use scroll preservation for profile tabs
 	useScrollPreservation(activeProfileTab, {
@@ -390,37 +348,55 @@ function LandingPage() {
 
 	useEffect(() => {
 		const newParams = new URLSearchParams(searchParams);
-		if (searchQuery.trim()) {
-			newParams.set('q', searchQuery.trim());
+		let changed = false;
+
+		const trimmedSearch = searchQuery.trim();
+		const currentSearch = searchParams.get('search') ?? searchParams.get('q');
+
+		if (trimmedSearch) {
+			if (currentSearch !== trimmedSearch || searchParams.has('q')) {
+				newParams.set('search', trimmedSearch);
+				newParams.delete('q');
+				changed = true;
+			}
 		} else {
-			newParams.delete('q');
+			if (searchParams.has('search') || searchParams.has('q')) {
+				newParams.delete('search');
+				newParams.delete('q');
+				changed = true;
+			}
 		}
+
+		const currentSort = searchParams.get('sort');
 		if (sortOption !== 'featured') {
-			newParams.set('sort', sortOption);
+			if (currentSort !== sortOption) {
+				newParams.set('sort', sortOption);
+				changed = true;
+			}
 		} else {
-			newParams.delete('sort');
+			if (searchParams.has('sort')) {
+				newParams.delete('sort');
+				changed = true;
+			}
 		}
-		setSearchParams(newParams, { replace: true });
+
+		if (changed) {
+			setSearchParams(newParams, { replace: true });
+		}
 	}, [searchQuery, sortOption, searchParams, setSearchParams]);
 
 	useEffect(() => {
-		const q = searchParams.get('q');
-		if (q !== null && q !== searchQueryRef.current) {
-			setSearchQuery(q);
-		} else if (q === null && searchQueryRef.current !== '') {
-			setSearchQuery('');
+		const searchVal = searchParams.get('search') ?? searchParams.get('q') ?? '';
+		if (searchVal !== searchQueryRef.current) {
+			setSearchQuery(searchVal);
 		}
 		const sort = searchParams.get('sort') as SortOption | null;
-		if (
-			sort &&
-			['featured', 'price-asc', 'price-desc', 'supply-desc'].includes(
-				sort
-			) &&
-			sort !== sortOptionRef.current
-		) {
-			setSortOption(sort);
-		} else if (sort === null && sortOptionRef.current !== 'featured') {
-			setSortOption('featured');
+		const validSort: SortOption =
+			sort && ['featured', 'price-asc', 'price-desc', 'supply-desc'].includes(sort)
+				? (sort as SortOption)
+				: 'featured';
+		if (validSort !== sortOptionRef.current) {
+			setSortOption(validSort);
 		}
 	}, [searchParams]);
 
@@ -1456,7 +1432,7 @@ function LandingPage() {
 						minHeight={300}
 					>
 						{finalFetchError ? (
-							<CreatorProfileLoadError
+							<CreatorProfileErrorState
 								onRetry={handleRetryCreatorFetch}
 								isRetrying={isLoading}
 							/>

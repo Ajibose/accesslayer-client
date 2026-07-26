@@ -20,6 +20,8 @@ queryClient.invalidateQueries({ queryKey: queryKeys.creators.list() });
 
 This marks cached data stale and lets React Query refetch in the background the next time the query is observed. Use this after a buy, sell, or profile update so all subscribers see fresh data automatically.
 
+See [React Query Cache Conventions](./react-query-cache-conventions.md) for the query key naming convention, the `invalidateQueries` vs `setQueryData` decision guide, and stale time defaults.
+
 ## Refetch manually
 
 Refetch manually only when you need to force an immediate reload independent of staleness — for example, a user-triggered "Refresh" button:
