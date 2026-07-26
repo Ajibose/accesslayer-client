@@ -809,6 +809,7 @@ function LandingPage() {
 
 	const handleConfirmTrade = async (amount: number) => {
 		const previousHoldings = featuredHoldings;
+		const creatorName = featuredCreator?.title ?? 'Unknown creator';
 		setTradeSubmitting(true);
 
 		try {
@@ -831,8 +832,8 @@ function LandingPage() {
 			showToast.transactionSuccess(
 				'Trade confirmed',
 				tradeSide === 'buy'
-					? `Holdings refreshed: +${formatNumber(amount)} keys.`
-					: `Holdings refreshed: -${formatNumber(amount)} keys.`
+					? `Bought ${formatNumber(amount)} key${amount === 1 ? '' : 's'} from ${creatorName}`
+					: `Sold ${formatNumber(amount)} key${amount === 1 ? '' : 's'} from ${creatorName}`
 			);
 			setTradeDialogOpen(false);
 		} catch (error) {
