@@ -93,6 +93,7 @@ const mockMatchMedia = () => {
 
 describe('LandingPage search debounce logic', () => {
 	let queryClient: QueryClient;
+	let consoleDebugSpy: ReturnType<typeof vi.spyOn>;
 
 	beforeEach(() => {
 		vi.useFakeTimers();
@@ -102,6 +103,13 @@ describe('LandingPage search debounce logic', () => {
 		mockGetCourses.mockReset();
 		mockGetCourses.mockResolvedValue([creatorAlpha]);
 		consoleDebugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+		queryClient = new QueryClient({
+			defaultOptions: {
+				queries: {
+					retry: false,
+				},
+			},
+		});
 	});
 
 	afterEach(() => {

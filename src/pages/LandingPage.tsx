@@ -290,7 +290,9 @@ function LandingPage() {
 	const [isLoading, setIsLoading] = useState(true);
 	const [isFilterLoading, setIsFilterLoading] = useState(false);
 	const [searchParams, setSearchParams] = useSearchParams();
-	const [searchQuery, setSearchQuery] = useState('');
+	const [searchQuery, setSearchQuery] = useState(() => {
+		return searchParams.get('search') ?? searchParams.get('q') ?? '';
+	});
 	const debouncedSearchQuery = useDebounce(searchQuery, 300);
 	const [minPriceFilter, setMinPriceFilter] = useState('');
 	const [maxPriceFilter, setMaxPriceFilter] = useState('');
@@ -359,13 +361,8 @@ function LandingPage() {
 	const shortcutConfirmationTimerRef = useRef<number | null>(null);
 
 	// Keep refs in sync with state
-	useEffect(() => {
-		searchQueryRef.current = searchQuery;
-	}, [searchQuery]);
-
-	useEffect(() => {
-		sortOptionRef.current = sortOption;
-	}, [sortOption]);
+	searchQueryRef.current = searchQuery;
+	sortOptionRef.current = sortOption;
 
 	// Use scroll preservation for profile tabs
 	useScrollPreservation(activeProfileTab, {
@@ -388,37 +385,55 @@ function LandingPage() {
 
 	useEffect(() => {
 		const newParams = new URLSearchParams(searchParams);
-		if (searchQuery.trim()) {
-			newParams.set('q', searchQuery.trim());
+		let changed = false;
+
+		const trimmedSearch = searchQuery.trim();
+		const currentSearch = searchParams.get('search') ?? searchParams.get('q');
+
+		if (trimmedSearch) {
+			if (currentSearch !== trimmedSearch || searchParams.has('q')) {
+				newParams.set('search', trimmedSearch);
+				newParams.delete('q');
+				changed = true;
+			}
 		} else {
-			newParams.delete('q');
+			if (searchParams.has('search') || searchParams.has('q')) {
+				newParams.delete('search');
+				newParams.delete('q');
+				changed = true;
+			}
 		}
+
+		const currentSort = searchParams.get('sort');
 		if (sortOption !== 'featured') {
-			newParams.set('sort', sortOption);
+			if (currentSort !== sortOption) {
+				newParams.set('sort', sortOption);
+				changed = true;
+			}
 		} else {
-			newParams.delete('sort');
+			if (searchParams.has('sort')) {
+				newParams.delete('sort');
+				changed = true;
+			}
 		}
-		setSearchParams(newParams, { replace: true });
+
+		if (changed) {
+			setSearchParams(newParams, { replace: true });
+		}
 	}, [searchQuery, sortOption, searchParams, setSearchParams]);
 
 	useEffect(() => {
-		const q = searchParams.get('q');
-		if (q !== null && q !== searchQueryRef.current) {
-			setSearchQuery(q);
-		} else if (q === null && searchQueryRef.current !== '') {
-			setSearchQuery('');
+		const searchVal = searchParams.get('search') ?? searchParams.get('q') ?? '';
+		if (searchVal !== searchQueryRef.current) {
+			setSearchQuery(searchVal);
 		}
 		const sort = searchParams.get('sort') as SortOption | null;
-		if (
-			sort &&
-			['featured', 'price-asc', 'price-desc', 'supply-desc'].includes(
-				sort
-			) &&
-			sort !== sortOptionRef.current
-		) {
-			setSortOption(sort);
-		} else if (sort === null && sortOptionRef.current !== 'featured') {
-			setSortOption('featured');
+		const validSort: SortOption =
+			sort && ['featured', 'price-asc', 'price-desc', 'supply-desc'].includes(sort)
+				? (sort as SortOption)
+				: 'featured';
+		if (validSort !== sortOptionRef.current) {
+			setSortOption(validSort);
 		}
 	}, [searchParams]);
 

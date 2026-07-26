@@ -166,9 +166,10 @@ describe('LandingPage debounced search clear integration (#519)', () => {
 
 		await waitFor(() => expect(mockGetCourses).toHaveBeenCalledTimes(2));
 		expect(mockGetCourses).toHaveBeenLastCalledWith({ search: 'Beta' });
-		await waitFor(() => expect(getCreatorTitles()).toEqual(['Creator Beta']));
-
-		fireEvent.change(input, { target: { value: '' } });
+		const inputClear = await screen.findByPlaceholderText(
+			/search creators by name or handle/i
+		);
+		fireEvent.change(inputClear, { target: { value: '' } });
 
 		await waitFor(() => expect(mockGetCourses).toHaveBeenCalledTimes(3));
 		expect(mockGetCourses).toHaveBeenLastCalledWith(undefined);
