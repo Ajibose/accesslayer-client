@@ -31,6 +31,7 @@ import MarketplaceSection from '@/components/common/MarketplaceSection';
 import { ProfileTabPillGroup } from '@/components/common/ProfileTabPill';
 import CreatorBreadcrumb from '@/components/common/CreatorBreadcrumb';
 import CreatorProfileHeader from '@/components/common/CreatorProfileHeader';
+import CreatorProfileErrorState from '@/components/common/CreatorProfileErrorState';
 import TransactionRetryNotice from '@/components/common/TransactionRetryNotice';
 import EmptyTransactionTimelineState from '@/components/common/EmptyTransactionTimelineState';
 import TradeDialog, { type TradeSide } from '@/components/common/TradeDialog';
@@ -67,7 +68,7 @@ import {
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { CREATOR_LIST_SORT_LAYOUT_TRANSITION } from '@/utils/creatorListSortTransition';
 import { creatorListKey } from '@/utils/creatorListKey.utils';
-import { AlertCircle, Check, ChevronDown, Copy, RefreshCw } from 'lucide-react';
+import { Check, ChevronDown, Copy, RefreshCw } from 'lucide-react';
 import ClearedFiltersEmptyState from '@/components/common/ClearedFiltersEmptyState';
 import CreatorListPagination from '@/components/common/CreatorListPagination';
 import CreatorListGroupSeparator from '@/components/common/CreatorListGroupSeparator';
@@ -233,46 +234,6 @@ const getCreatorListKey = (creator: Course) =>
 
 type SortOption = 'featured' | 'price-asc' | 'price-desc' | 'supply-desc';
 type CreatorListMode = 'pagination' | 'infinite';
-
-interface CreatorProfileLoadErrorProps {
-	onRetry: () => void;
-	isRetrying: boolean;
-}
-
-const CreatorProfileLoadError: React.FC<CreatorProfileLoadErrorProps> = ({
-	onRetry,
-	isRetrying,
-}) => (
-	<div
-		role="alert"
-		aria-live="polite"
-		className="marketplace-card-surface flex min-h-[18rem] flex-col items-center justify-center rounded-[2rem] border p-6 text-center shadow-[0_24px_80px_-60px_rgba(8,17,31,0.95)] md:p-8"
-	>
-		<div className="mb-4 rounded-full border border-red-400/25 bg-red-500/10 p-3 text-red-200">
-			<AlertCircle className="size-6" aria-hidden="true" />
-		</div>
-		<h2 className="font-grotesque text-2xl font-black tracking-tight text-white">
-			Unable to load this creator profile
-		</h2>
-		<p className="mt-2 max-w-md font-jakarta text-sm leading-relaxed text-white/60">
-			We couldn't load the latest profile details. Check your connection and
-			try again.
-		</p>
-		<Button
-			type="button"
-			variant="outline"
-			onClick={onRetry}
-			disabled={isRetrying}
-			className="mt-5 rounded-xl border-white/10 bg-white/5 px-5 font-bold text-white transition-all hover:border-amber-500/30 hover:bg-amber-500/10"
-		>
-			<RefreshCw
-				className={isRetrying ? 'size-4 animate-spin' : 'size-4'}
-				aria-hidden="true"
-			/>
-			{isRetrying ? 'Retrying...' : 'Retry'}
-		</Button>
-	</div>
-);
 
 function LandingPage() {
 	const [creators, setCreators] = useState<Course[]>([]);
@@ -1452,7 +1413,7 @@ function LandingPage() {
 						minHeight={300}
 					>
 						{finalFetchError ? (
-							<CreatorProfileLoadError
+							<CreatorProfileErrorState
 								onRetry={handleRetryCreatorFetch}
 								isRetrying={isLoading}
 							/>
