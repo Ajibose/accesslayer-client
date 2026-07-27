@@ -5,11 +5,13 @@ import { createBrowserRouter, RouterProvider } from 'react-router';
 import AppErrorBoundary from './components/common/AppErrorBoundary';
 import { useNavigationTiming } from './hooks/useNavigationTiming';
 import { routes } from './routes';
+import { useRouteChangeLogging } from './hooks/useRouteChangeLogging';
 
 const router = createBrowserRouter(routes);
 
 function App() {
 	useNavigationTiming();
+	useRouteChangeLogging();
 
 	useEffect(() => {
 		const lenis = new Lenis({
