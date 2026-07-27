@@ -823,6 +823,15 @@ function LandingPage() {
 			}
 			setTradeDialogOpen(false);
 		} catch (error) {
+			if (process.env.NODE_ENV !== 'test') {
+				console.debug('[trade-confirmation-failure]', {
+					creator_name: FEATURED_CREATOR_NAME,
+					side: tradeSide,
+					quantity: amount,
+					error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+					timestamp: new Date().toISOString(),
+				});
+			}
 			if (tradeSide === 'sell') {
 				showToast.error(getSignatureErrorMessage(error));
 			}
