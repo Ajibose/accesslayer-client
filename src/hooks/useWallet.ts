@@ -90,8 +90,18 @@ export function useTradeMutation(address: string) {
 				`Holdings refreshed: +${variables.amount} keys.`
 			);
 		},
-		onSettled: () => {
+		onSettled: (_data, _error, variables) => {
+			const invalidatedKeys = [queryKeys.wallet.holdings(address)];
 			queryClient.invalidateQueries({ queryKey: queryKeys.wallet.holdings(address) });
+
+			if (process.env.NODE_ENV !== 'test') {
+				console.debug('[cache-invalidation]', {
+					invalidated_keys: invalidatedKeys.map(k => JSON.stringify(k)),
+					trigger: (variables as TradeVariables).amount > 0 ? 'buy' : 'sell',
+					creator_id: (variables as TradeVariables).creatorId,
+					invalidated_at: new Date().toISOString(),
+				});
+			}
 		},
 	});
 
