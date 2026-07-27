@@ -48,11 +48,13 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 	const [amountText, setAmountText] = useState('1');
 	const [touched, setTouched] = useState(false);
 	const amountInputRef = useRef<HTMLInputElement | null>(null);
+	const pricePreviewFailureLogged = useRef(false);
 
 	useEffect(() => {
 		if (open) {
 			setAmountText('1');
 			setTouched(false);
+			pricePreviewFailureLogged.current = false;
 		}
 	}, [open]);
 
@@ -99,6 +101,38 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 		}
 		return estimateSellProceeds(keyPriceStroops, currentSupply, parsedAmount);
 	}, [side, keyPriceStroops, currentSupply, parsedAmount]);
+
+	useEffect(() => {
+		if (process.env.NODE_ENV === 'test') return;
+		if (!open || pricePreviewFailureLogged.current) return;
+
+		if (side === 'buy' && keyPriceStroops == null) {
+			console.debug('[price-preview-failure]', {
+				creator_name: creatorName,
+				quantity: Number.isFinite(parsedAmount) ? parsedAmount : null,
+				side: 'buy',
+				reason: 'key_price_missing',
+				timestamp: new Date().toISOString(),
+			});
+			pricePreviewFailureLogged.current = true;
+		}
+	}, [open, side, keyPriceStroops, creatorName, parsedAmount]);
+
+	useEffect(() => {
+		if (process.env.NODE_ENV === 'test') return;
+		if (!open || pricePreviewFailureLogged.current) return;
+
+		if (side === 'sell' && estimatedProceedsStroops == null) {
+			console.debug('[price-preview-failure]', {
+				creator_name: creatorName,
+				quantity: Number.isFinite(parsedAmount) ? parsedAmount : null,
+				side: 'sell',
+				reason: 'estimate_unavailable',
+				timestamp: new Date().toISOString(),
+			});
+			pricePreviewFailureLogged.current = true;
+		}
+	}, [open, side, estimatedProceedsStroops, creatorName, parsedAmount]);
 
 	return (
 		<Dialog
