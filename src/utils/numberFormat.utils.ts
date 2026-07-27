@@ -113,3 +113,15 @@ export function formatPercent(
 	return `${sign}${formatted}%`;
 }
 
+/**
+ * Converts basis points (bps) to a percentage string (e.g. 500 -> "5%", 250 -> "2.5%").
+ */
+export function bpsToPercent(
+	bps: number | null | undefined,
+	options: FormatPercentOptions = {}
+): string {
+	if (bps == null || !Number.isFinite(bps)) {
+		return options.emptyPlaceholder ?? '—';
+	}
+	return formatPercent(bps / 100, options);
+}
