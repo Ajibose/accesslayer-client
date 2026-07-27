@@ -97,6 +97,14 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({
 		localStorage.setItem(COMPACT_VIEW_KEY, String(isCompact));
 	}, [isCompact]);
 
+	const sortedTransactions = [...transactions].sort((left, right) => {
+		if (left.timestamp !== right.timestamp) {
+			return right.timestamp - left.timestamp;
+		}
+
+		return right.id.localeCompare(left.id);
+	});
+
 	const toggleCompact = () => {
 		setIsCompact(!isCompact);
 	};
@@ -157,7 +165,7 @@ const TransactionHistory: React.FC<TransactionHistoryProps> = ({
 			</div>
 
 			<div className="space-y-2">
-				{transactions.map(tx => {
+				{sortedTransactions.map(tx => {
 					const displayHandle = formatCreatorHandle(tx.creatorHandle);
 					const isExpanded = expandedRows.has(tx.id) || !isCompact;
 					return (

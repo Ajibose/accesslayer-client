@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { MemoryRouter, Routes, Route } from 'react-router';
 import CreatorDetailPage from '@/pages/CreatorDetailPage';
 import { courseService } from '@/services/course.service';
+import { ApiError } from '@/services/api.service';
 
 vi.mock('@/services/course.service', () => ({
 	courseService: {
@@ -49,14 +50,17 @@ function makeFreshQueryClient() {
 
 describe('CreatorDetailPage Integration', () => {
 	let queryClient: QueryClient;
+	let consoleErrorSpy: ReturnType<typeof vi.spyOn>;
 
 	beforeEach(() => {
 		queryClient = makeFreshQueryClient();
 		mockGetCourse.mockReset();
+		consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
 	});
 
 	afterEach(() => {
 		vi.clearAllMocks();
+		consoleErrorSpy.mockRestore();
 	});
 
 	it('renders details, applies bpsToPercent, and formats fees as percentages', async () => {
@@ -106,5 +110,42 @@ describe('CreatorDetailPage Integration', () => {
 		// Assert raw bps values are not visible in the rendered output
 		expect(screen.queryByText('500')).not.toBeInTheDocument();
 		expect(screen.queryByText('250')).not.toBeInTheDocument();
+	});
+
+	it('renders a creator-not-found state for a 404 response on the canonical /creator route', async () => {
+		mockGetCourse.mockRejectedValue(
+			new ApiError('Creator not found', 404, {
+				success: false,
+				message: 'Creator not found',
+			})
+		);
+
+		render(
+			<QueryClientProvider client={queryClient}>
+				<MemoryRouter initialEntries={['/creator/unknown-id']}>
+					<Routes>
+						<Route path="/creator/:id" element={<CreatorDetailPage />} />
+						<Route path="/creators" element={<div>Creators list</div>} />
+					</Routes>
+				</MemoryRouter>
+			</QueryClientProvider>
+		);
+
+		expect(
+			await screen.findByRole('heading', { name: 'Creator not found' })
+		).toBeInTheDocument();
+		expect(
+			screen.getByText(/we couldn't find a creator with that id/i)
+		).toBeInTheDocument();
+		expect(
+			screen.getByRole('link', { name: /back to creators/i })
+		).toHaveAttribute('href', '/creators');
+
+		expect(
+			screen.queryByLabelText(/loading creator profile/i)
+		).not.toBeInTheDocument();
+		expect(
+			screen.queryByText(/this creator page could not load/i)
+		).not.toBeInTheDocument();
 	});
 });

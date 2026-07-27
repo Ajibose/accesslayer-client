@@ -6,6 +6,7 @@ import CreatorProfileInfoGrid from '@/components/common/CreatorProfileInfoGrid';
 import { CreatorProfileHeaderSkeleton } from '@/components/common/CreatorSkeleton';
 import { bpsToPercent } from '@/utils/numberFormat.utils';
 import CreatorPageErrorBoundary from '@/components/common/CreatorPageErrorBoundary';
+import { ApiError } from '@/services/api.service';
 
 function CreatorDetailPageContent() {
 	const { id } = useParams<{ id: string }>();
@@ -21,8 +22,12 @@ function CreatorDetailPageContent() {
 		);
 	}
 
-	if (error || !creator) {
-		throw new Error('Creator not found');
+	if (error) {
+		throw error;
+	}
+
+	if (!creator) {
+		throw new ApiError('Creator not found', 404);
 	}
 
 	const feeItems = [

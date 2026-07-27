@@ -8,6 +8,14 @@ export const routes = [
 		element: <HomePage />,
 	},
 	{
+		path: '/creators',
+		element: <HomePage />,
+	},
+	{
+		path: '/creator/:id',
+		element: <CreatorDetailPage />,
+	},
+	{
 		path: '/creators/:id',
 		element: <CreatorDetailPage />,
 	},

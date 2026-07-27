@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { Copy, Check } from 'lucide-react';
 import {
@@ -21,10 +21,12 @@ import { useCopySuccessAnnouncement } from '@/hooks/useCopySuccessAnnouncement';
 import CopySuccessAnnouncement from '@/components/common/CopySuccessAnnouncement';
 import showToast from '@/utils/toast.util';
 import { copyTextToClipboard } from '@/utils/clipboard.utils';
+import { logWalletDisconnectSession } from '@/lib/walletSessionLog';
 
 function ConnectWalletButton() {
 	const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
 	const [copied, setCopied] = useState(false);
+	const connectedAtRef = useRef<number | null>(null);
 	const { address, isConnected } = useAccount();
 	const { connect, connectors, error, isPending } = useConnect();
 	const { disconnect } = useDisconnect();
@@ -50,6 +52,17 @@ function ConnectWalletButton() {
 			);
 		}
 	};
+
+	useEffect(() => {
+		if (isConnected && address && connectedAtRef.current == null) {
+			connectedAtRef.current = Date.now();
+			return;
+		}
+
+		if (!isConnected) {
+			connectedAtRef.current = null;
+		}
+	}, [address, isConnected]);
 
 	if (isConnected && address) {
 		return (
@@ -84,7 +97,14 @@ function ConnectWalletButton() {
 									type="button"
 									variant="destructive"
 									onClick={() => {
+										if (connectedAtRef.current != null) {
+											logWalletDisconnectSession(
+												address,
+												connectedAtRef.current
+											);
+										}
 										disconnect();
+										connectedAtRef.current = null;
 										setShowDisconnectDialog(false);
 									}}
 								>

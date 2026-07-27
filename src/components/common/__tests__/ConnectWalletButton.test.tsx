@@ -15,6 +15,7 @@ const mockUseConnect = vi.mocked(useConnect);
 const mockUseDisconnect = vi.mocked(useDisconnect);
 
 const FULL_ADDRESS = '0x1234567890abcdef1234567890abcdef12345678';
+const TRUNCATED_ADDRESS_PATTERN = /0x12.*5678/i;
 
 function setupConnectedWalletMocks(disconnect = vi.fn()) {
 	mockUseAccount.mockReturnValue({
@@ -44,7 +45,9 @@ describe('ConnectWalletButton wallet disconnect confirmation', () => {
 	it('opens a confirmation dialog before disconnecting', () => {
 		const { disconnect } = renderConnectedWallet();
 
-		fireEvent.click(screen.getByRole('button', { name: /0x1234/i }));
+		fireEvent.click(
+			screen.getByRole('button', { name: TRUNCATED_ADDRESS_PATTERN })
+		);
 
 		expect(
 			screen.getByRole('dialog', { name: /disconnect wallet/i })
@@ -55,16 +58,50 @@ describe('ConnectWalletButton wallet disconnect confirmation', () => {
 	it('disconnects when the confirmation action is clicked', () => {
 		const { disconnect } = renderConnectedWallet();
 
-		fireEvent.click(screen.getByRole('button', { name: /0x1234/i }));
+		fireEvent.click(
+			screen.getByRole('button', { name: TRUNCATED_ADDRESS_PATTERN })
+		);
 		fireEvent.click(screen.getByRole('button', { name: /^disconnect$/i }));
 
 		expect(disconnect).toHaveBeenCalledTimes(1);
 	});
 
+	it('emits a structured disconnect log with session duration outside test env', () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(new Date('2026-07-27T10:00:00.000Z'));
+		const originalEnv = process.env.NODE_ENV;
+		process.env.NODE_ENV = 'development';
+		const debugSpy = vi.spyOn(console, 'debug').mockImplementation(() => {});
+		const { disconnect } = renderConnectedWallet();
+
+		act(() => {
+			vi.advanceTimersByTime(4_500);
+		});
+
+		fireEvent.click(
+			screen.getByRole('button', { name: TRUNCATED_ADDRESS_PATTERN })
+		);
+		fireEvent.click(screen.getByRole('button', { name: /^disconnect$/i }));
+
+		expect(disconnect).toHaveBeenCalledTimes(1);
+		expect(debugSpy).toHaveBeenCalledWith('[wallet-disconnect]', {
+			truncated_address: '0x12...5678',
+			session_duration_ms: 4_500,
+			disconnected_at: '2026-07-27T10:00:04.500Z',
+		});
+		expect(JSON.stringify(debugSpy.mock.calls[0][1])).not.toContain(FULL_ADDRESS);
+
+		debugSpy.mockRestore();
+		process.env.NODE_ENV = originalEnv;
+		vi.useRealTimers();
+	});
+
 	it('cancels without disconnecting', async () => {
 		const { disconnect } = renderConnectedWallet();
 
-		fireEvent.click(screen.getByRole('button', { name: /0x1234/i }));
+		fireEvent.click(
+			screen.getByRole('button', { name: TRUNCATED_ADDRESS_PATTERN })
+		);
 		fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
 
 		await waitFor(() => {
@@ -76,7 +113,9 @@ describe('ConnectWalletButton wallet disconnect confirmation', () => {
 	it('dismisses with Escape without disconnecting', async () => {
 		const { disconnect } = renderConnectedWallet();
 
-		fireEvent.click(screen.getByRole('button', { name: /0x1234/i }));
+		fireEvent.click(
+			screen.getByRole('button', { name: TRUNCATED_ADDRESS_PATTERN })
+		);
 		fireEvent.keyDown(document, { key: 'Escape' });
 
 		await waitFor(() => {
