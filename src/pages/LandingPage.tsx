@@ -182,6 +182,7 @@ const CREATOR_SORT_KEY = 'accesslayer.creator-sort';
 const CREATOR_PAGE_KEY = 'accesslayer.creator-page';
 const CREATOR_SCROLL_KEY = 'accesslayer.creator-scrollY';
 const CREATOR_LIST_MODE_KEY = 'accesslayer.creator-list-mode';
+const CREATOR_VISIBLE_COUNT_KEY = 'accesslayer.creator-visibleCount';
 const MAX_CREATOR_FETCH_RETRIES = 3;
 const BASE_RETRY_DELAY_MS = 800;
 const PAGE_SIZE = 6;
@@ -320,7 +321,14 @@ function LandingPage() {
 		const saved = window.localStorage.getItem(CREATOR_LIST_MODE_KEY);
 		return saved === 'infinite' ? 'infinite' : 'pagination';
 	});
-	const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+	// Persisted like `page` so infinite-scroll progress survives navigating
+	// away and back (#639) instead of resetting to the first page.
+	const [visibleCount, setVisibleCount] = useState(() => {
+		if (typeof window === 'undefined') return PAGE_SIZE;
+		const saved = window.sessionStorage.getItem(CREATOR_VISIBLE_COUNT_KEY);
+		const parsed = saved ? Number(saved) : PAGE_SIZE;
+		return Number.isFinite(parsed) && parsed >= PAGE_SIZE ? parsed : PAGE_SIZE;
+	});
 	const pendingScrollRestoreRef = useRef<number | null>(null);
 	const shortcutConfirmationTimerRef = useRef<number | null>(null);
 
@@ -405,6 +413,14 @@ function LandingPage() {
 		if (typeof window === 'undefined') return;
 		window.sessionStorage.setItem(CREATOR_PAGE_KEY, String(page));
 	}, [page]);
+
+	useEffect(() => {
+		if (typeof window === 'undefined') return;
+		window.sessionStorage.setItem(
+			CREATOR_VISIBLE_COUNT_KEY,
+			String(visibleCount)
+		);
+	}, [visibleCount]);
 
 	useEffect(() => {
 		if (typeof window === 'undefined') return;
@@ -584,14 +600,29 @@ function LandingPage() {
 		return () => clearTimeout(timer);
 	}, [trimmedSearchQuery, sortOption, creators.length]);
 
+	// Resets pagination when the search/sort criteria actually change. Skips
+	// the initial mount so restoring a persisted page/visibleCount (#639)
+	// isn't immediately clobbered by this effect's first run.
+	const isFirstSearchSortRenderRef = useRef(true);
 	useEffect(() => {
+		if (isFirstSearchSortRenderRef.current) {
+			isFirstSearchSortRenderRef.current = false;
+			return;
+		}
 		setPage(0);
 		setVisibleCount(PAGE_SIZE);
 	}, [trimmedSearchQuery, sortOption]);
 
 	// Switching modes starts the newly active view from the top of the
-	// filtered results rather than wherever the other mode left off.
+	// filtered results rather than wherever the other mode left off. Skips
+	// the initial mount so restoring a persisted page/visibleCount (#639)
+	// isn't immediately clobbered by this effect's first run.
+	const isFirstListModeRenderRef = useRef(true);
 	useEffect(() => {
+		if (isFirstListModeRenderRef.current) {
+			isFirstListModeRenderRef.current = false;
+			return;
+		}
 		setPage(0);
 		setVisibleCount(PAGE_SIZE);
 	}, [listMode]);
