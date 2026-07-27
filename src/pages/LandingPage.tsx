@@ -87,6 +87,7 @@ const FEATURED_CREATOR_FOLLOWER_COUNT: number | null = null;
 const FEATURED_CREATOR_KEY_HOLDER_COUNT = 0;
 const FEATURED_CREATOR_STELLAR_ADDRESS =
 	'GBBD47IF6LWK7P7MDEVSCWR7DPUWV3NY3DTQEVFL4NAT4AQH3ZLLFLA5';
+const FEATURED_CREATOR_NAME = 'Alex Rivers';
 
 // Fallback demo data in case API fails
 const DEMO_CREATORS: Course[] = [
@@ -817,7 +818,7 @@ function LandingPage() {
 				await new Promise<void>(resolve => window.setTimeout(resolve, 250));
 				showToast.transactionSuccess(
 					'Trade confirmed',
-					`Holdings refreshed: -${formatNumber(amount)} keys.`
+					`Sold ${formatNumber(amount)} key${amount === 1 ? '' : 's'} from ${FEATURED_CREATOR_NAME}`
 				);
 			}
 			setTradeDialogOpen(false);
@@ -1730,7 +1731,7 @@ function LandingPage() {
 			<TradeDialog
 				open={tradeDialogOpen}
 				side={tradeSide}
-				creatorName="Alex Rivers"
+				creatorName={FEATURED_CREATOR_NAME}
 				availableHoldings={featuredHoldings}
 				keyPriceStroops={resolveCreatorKeyPriceStroops(featuredCreator)}
 				isSubmitting={tradeSubmitting}
