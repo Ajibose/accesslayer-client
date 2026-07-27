@@ -6,6 +6,11 @@ import LandingPage from '@/pages/LandingPage';
 import { courseService } from '@/services/course.service';
 import showToast from '@/utils/toast.util';
 
+vi.mock('@/hooks/useWallet', () => ({
+	useTradeMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+	useWalletHoldings: () => ({ data: [] }),
+}));
+
 vi.mock('@/services/course.service', () => ({
 	courseService: { getCourses: vi.fn() },
 }));

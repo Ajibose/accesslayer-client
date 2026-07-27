@@ -25,6 +25,8 @@ export interface Course {
 	isPinned?: boolean;
 	creatorFeeBps?: number;
 	protocolFeeBps?: number;
+	/** Last up to 7 price history points in stroops, oldest to newest. */
+	priceHistory?: number[];
 }
 
 export type CourseSortOption =

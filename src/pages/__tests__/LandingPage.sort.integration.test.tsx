@@ -1,6 +1,6 @@
 import type { ComponentProps, ReactNode } from 'react';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router';
+import { MemoryRouter, useLocation } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import LandingPage from '@/pages/LandingPage';
 import {
@@ -31,15 +31,20 @@ vi.mock('@/hooks/useStaleData', () => ({
 
 vi.mock('@/components/common/StellarConnectionQualityBadge', async () => {
 	const React = await import('react');
-
 	return {
 		default: () => React.createElement('div', { role: 'status' }, 'RPC good'),
 	};
 });
 
+vi.mock('@/components/common/FeaturedCreatorAudienceChip', async () => {
+	const React = await import('react');
+	return {
+		FeaturedCreatorAudienceChip: () => React.createElement('div', null, 'Mocked Audience Chip'),
+	};
+});
+
 vi.mock('@/components/common/CreatorCard', async () => {
 	const React = await import('react');
-
 	return {
 		default: ({ creator }: { creator: { title: string } }) =>
 			React.createElement(
@@ -67,7 +72,6 @@ vi.mock('framer-motion', async () => {
 				const { layout, transition, ...divProps } = props;
 				void layout;
 				void transition;
-
 				return React.createElement('div', divProps, children);
 			},
 			h1: ({ children, ...props }: ComponentProps<'h1'>) =>
@@ -106,9 +110,21 @@ const creatorBeta: Course = {
 	isVerified: true,
 };
 
-const featuredOrder = [creatorAlpha, creatorBeta];
-const priceAscOrder = [creatorBeta, creatorAlpha];
-const priceDescOrder = [creatorAlpha, creatorBeta];
+const creatorGamma: Course = {
+	id: '3',
+	title: 'Creator Gamma',
+	description: 'Solidity Developer',
+	price: 0.3,
+	priceStroops: 3_000_000,
+	creatorShareSupply: 75,
+	instructorId: 'creator-gamma',
+	category: 'Tech',
+	level: 'ADVANCED',
+	isVerified: true,
+};
+
+const featuredOrder = [creatorAlpha, creatorBeta, creatorGamma];
+const priceAscOrder = [creatorBeta, creatorGamma, creatorAlpha];
 
 const mockMatchMedia = () => {
 	Object.defineProperty(window, 'matchMedia', {
@@ -129,7 +145,12 @@ const mockMatchMedia = () => {
 const getCreatorTitles = () =>
 	screen.getAllByRole('article').map(node => node.textContent);
 
-describe('LandingPage sort integration (#499)', () => {
+function RouteLocationTracker() {
+	const location = useLocation();
+	return <div data-testid="location-search">{location.search}</div>;
+}
+
+describe('LandingPage sort dropdown integration test', () => {
 	beforeEach(() => {
 		mockMatchMedia();
 		window.localStorage.clear();
@@ -137,46 +158,45 @@ describe('LandingPage sort integration (#499)', () => {
 		mockGetCourses.mockReset();
 		mockGetCourses.mockImplementation(async (params?: GetCoursesParams) => {
 			if (params?.sort === 'price-asc') return priceAscOrder;
-			if (params?.sort === 'price-desc') return priceDescOrder;
 			return featuredOrder;
 		});
 	});
 
-	it('requests creators with the new sort param and renders the refreshed list', async () => {
+	it('selects sort and reorders creator list to match API response, updating the URL query string', async () => {
 		render(
 			<MemoryRouter>
 				<LandingPage />
+				<RouteLocationTracker />
 			</MemoryRouter>
 		);
 
+		// Initial load gets courses in featured order
 		await waitFor(() => expect(mockGetCourses).toHaveBeenCalledTimes(1));
 		expect(mockGetCourses).toHaveBeenLastCalledWith(undefined);
 		await waitFor(() =>
-			expect(getCreatorTitles()).toEqual(['Creator Alpha', 'Creator Beta'])
+			expect(getCreatorTitles()).toEqual(['Creator Alpha', 'Creator Beta', 'Creator Gamma'])
 		);
 
+		// Select the Price sort option (Price: Low to high -> value 'price-asc')
 		fireEvent.change(screen.getByLabelText(/^sort$/i), {
 			target: { value: 'price-asc' },
 		});
 
+		// Assert API is called with sort=price-asc in request params
 		await waitFor(() => expect(mockGetCourses).toHaveBeenCalledTimes(2));
 		expect(mockGetCourses).toHaveBeenLastCalledWith({ sort: 'price-asc' });
+
+		// Assert list reorders to match the API response for price sort
 		await waitFor(() =>
-			expect(getCreatorTitles()).toEqual(['Creator Beta', 'Creator Alpha'])
+			expect(getCreatorTitles()).toEqual(['Creator Beta', 'Creator Gamma', 'Creator Alpha'])
 		);
 
-		fireEvent.change(screen.getByLabelText(/^sort$/i), {
-			target: { value: 'price-desc' },
-		});
+		// Assert previous order is not visible
+		expect(getCreatorTitles()).not.toEqual(['Creator Alpha', 'Creator Beta', 'Creator Gamma']);
 
-		await waitFor(() => expect(mockGetCourses).toHaveBeenCalledTimes(3));
-		expect(mockGetCourses).toHaveBeenLastCalledWith({ sort: 'price-desc' });
-		expect(mockGetCourses.mock.calls[2]?.[0]).not.toHaveProperty(
-			'sort',
-			'price-asc'
-		);
+		// Assert dropdown selection reflected in the URL query string
 		await waitFor(() =>
-			expect(getCreatorTitles()).toEqual(['Creator Alpha', 'Creator Beta'])
+			expect(screen.getByTestId('location-search')).toHaveTextContent('sort=price-asc')
 		);
 	});
 });

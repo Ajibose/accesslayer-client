@@ -1,22 +1,24 @@
-/**
- * Integration test for debounced search clearing (#519).
- *
- * Confirms that clearing the search input triggers a debounced refetch without
- * a search param and restores the full unfiltered creator list.
- */
 import type { ComponentProps, ReactNode } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { cleanup, render, screen, waitFor } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import LandingPage from '@/pages/LandingPage';
-import {
-	courseService,
-	type Course,
-	type GetCoursesParams,
-} from '@/services/course.service';
+import { courseService } from '@/services/course.service';
+import showToast from '@/utils/toast.util';
 
 vi.mock('@/services/course.service', () => ({
 	courseService: { getCourses: vi.fn() },
+}));
+
+vi.mock('@/utils/toast.util', () => ({
+	default: {
+		message: vi.fn(),
+		success: vi.fn(),
+		error: vi.fn(),
+		loading: vi.fn(),
+		transactionSuccess: vi.fn(),
+	},
 }));
 
 vi.mock('@/hooks/useNetworkMismatch', () => ({
@@ -85,34 +87,7 @@ vi.mock('framer-motion', async () => {
 });
 
 const mockGetCourses = vi.mocked(courseService.getCourses);
-
-const creatorAlpha: Course = {
-	id: '1',
-	title: 'Creator Alpha',
-	description: 'Digital artist',
-	price: 0.5,
-	priceStroops: 5_000_000,
-	creatorShareSupply: 100,
-	instructorId: 'creator-alpha',
-	category: 'Art',
-	level: 'BEGINNER',
-	isVerified: true,
-};
-
-const creatorBeta: Course = {
-	id: '2',
-	title: 'Creator Beta',
-	description: 'Music producer',
-	price: 0.1,
-	priceStroops: 1_000_000,
-	creatorShareSupply: 50,
-	instructorId: 'creator-beta',
-	category: 'Music',
-	level: 'INTERMEDIATE',
-	isVerified: true,
-};
-
-const allCreators = [creatorAlpha, creatorBeta];
+const mockShowToast = vi.mocked(showToast);
 
 const mockMatchMedia = () => {
 	Object.defineProperty(window, 'matchMedia', {
@@ -130,51 +105,80 @@ const mockMatchMedia = () => {
 	});
 };
 
-const getCreatorTitles = () =>
-	screen.getAllByRole('article').map(node => node.textContent);
-
-describe('LandingPage debounced search clear integration (#519)', () => {
+describe('LandingPage trade confirmation toast (#540)', () => {
 	beforeEach(() => {
 		mockMatchMedia();
 		window.localStorage.clear();
 		window.sessionStorage.clear();
 		mockGetCourses.mockReset();
-		mockGetCourses.mockImplementation(async (params?: GetCoursesParams) => {
-			if (params?.search) return [creatorBeta];
-			return allCreators;
-		});
+		vi.clearAllMocks();
 	});
 
-	it('re-fetches without a search param and restores the full creator list after the input is cleared', async () => {
+	afterEach(() => {
+		cleanup();
+	});
+
+	it('shows a success toast with quantity and creator name after a confirmed buy', async () => {
+		mockGetCourses.mockResolvedValue([]);
+		const user = userEvent.setup();
 		render(
 			<MemoryRouter>
 				<LandingPage />
 			</MemoryRouter>
 		);
 
-		await waitFor(() => expect(mockGetCourses).toHaveBeenCalledTimes(1));
-		expect(mockGetCourses).toHaveBeenLastCalledWith(undefined);
-		await waitFor(() =>
-			expect(getCreatorTitles()).toEqual(['Creator Alpha', 'Creator Beta'])
+		const buyButtons = await screen.findAllByRole('button', {
+			name: 'Buy',
+			hidden: true,
+		});
+		await user.click(buyButtons[0]);
+
+		const amountInput = await screen.findByTestId('trade-dialog-amount');
+		await user.clear(amountInput);
+		await user.type(amountInput, '5');
+
+		await user.click(screen.getByTestId('trade-dialog-confirm'));
+
+		await waitFor(
+			() =>
+				expect(mockShowToast.transactionSuccess).toHaveBeenCalledTimes(1),
+			{ timeout: 3000 }
+		);
+		expect(mockShowToast.transactionSuccess).toHaveBeenCalledWith(
+			'Trade confirmed',
+			expect.stringMatching(/^Bought 5 keys from .+$/)
+		);
+	});
+
+	it('shows a success toast with quantity and creator name after a confirmed sell', async () => {
+		mockGetCourses.mockResolvedValue([]);
+		const user = userEvent.setup();
+		render(
+			<MemoryRouter>
+				<LandingPage />
+			</MemoryRouter>
 		);
 
-		const input = screen.getByPlaceholderText(
-			/search creators by name or handle/i
+		const sellButtons = await screen.findAllByRole('button', {
+			name: 'Sell',
+			hidden: true,
+		});
+		await user.click(sellButtons[0]);
+
+		const amountInput = await screen.findByTestId('trade-dialog-amount');
+		await user.clear(amountInput);
+		await user.type(amountInput, '1');
+
+		await user.click(screen.getByTestId('trade-dialog-confirm'));
+
+		await waitFor(
+			() =>
+				expect(mockShowToast.transactionSuccess).toHaveBeenCalledTimes(1),
+			{ timeout: 3000 }
 		);
-
-		fireEvent.change(input, { target: { value: 'Beta' } });
-
-		await waitFor(() => expect(mockGetCourses).toHaveBeenCalledTimes(2));
-		expect(mockGetCourses).toHaveBeenLastCalledWith({ search: 'Beta' });
-		const inputClear = await screen.findByPlaceholderText(
-			/search creators by name or handle/i
-		);
-		fireEvent.change(inputClear, { target: { value: '' } });
-
-		await waitFor(() => expect(mockGetCourses).toHaveBeenCalledTimes(3));
-		expect(mockGetCourses).toHaveBeenLastCalledWith(undefined);
-		await waitFor(() =>
-			expect(getCreatorTitles()).toEqual(['Creator Alpha', 'Creator Beta'])
+		expect(mockShowToast.transactionSuccess).toHaveBeenCalledWith(
+			'Trade confirmed',
+			expect.stringMatching(/^Sold 1 key from .+$/)
 		);
 	});
 });

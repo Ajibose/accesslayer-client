@@ -1,19 +1,22 @@
 /**
- * Integration test for debounced search clearing (#519).
+ * Holdings empty-state UI (#539).
  *
- * Confirms that clearing the search input triggers a debounced refetch without
- * a search param and restores the full unfiltered creator list.
+ * When the holdings query settles with zero creator keys, the holdings
+ * overview must show an empty state (illustration + copy + CTA) instead of
+ * a blank grid. Loading must keep the skeleton so the empty state never
+ * flashes mid-fetch.
  */
 import type { ComponentProps, ReactNode } from 'react';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import LandingPage from '@/pages/LandingPage';
-import {
-	courseService,
-	type Course,
-	type GetCoursesParams,
-} from '@/services/course.service';
+import { courseService } from '@/services/course.service';
+
+vi.mock('@/hooks/useWallet', () => ({
+	useTradeMutation: () => ({ mutateAsync: vi.fn(), isPending: false }),
+	useWalletHoldings: () => ({ data: [] }),
+}));
 
 vi.mock('@/services/course.service', () => ({
 	courseService: { getCourses: vi.fn() },
@@ -86,34 +89,6 @@ vi.mock('framer-motion', async () => {
 
 const mockGetCourses = vi.mocked(courseService.getCourses);
 
-const creatorAlpha: Course = {
-	id: '1',
-	title: 'Creator Alpha',
-	description: 'Digital artist',
-	price: 0.5,
-	priceStroops: 5_000_000,
-	creatorShareSupply: 100,
-	instructorId: 'creator-alpha',
-	category: 'Art',
-	level: 'BEGINNER',
-	isVerified: true,
-};
-
-const creatorBeta: Course = {
-	id: '2',
-	title: 'Creator Beta',
-	description: 'Music producer',
-	price: 0.1,
-	priceStroops: 1_000_000,
-	creatorShareSupply: 50,
-	instructorId: 'creator-beta',
-	category: 'Music',
-	level: 'INTERMEDIATE',
-	isVerified: true,
-};
-
-const allCreators = [creatorAlpha, creatorBeta];
-
 const mockMatchMedia = () => {
 	Object.defineProperty(window, 'matchMedia', {
 		writable: true,
@@ -124,57 +99,84 @@ const mockMatchMedia = () => {
 			addEventListener: vi.fn(),
 			removeEventListener: vi.fn(),
 			addListener: vi.fn(),
-			removeListener: vi.fn(),
 			dispatchEvent: vi.fn(),
 		})),
 	});
 };
 
-const getCreatorTitles = () =>
-	screen.getAllByRole('article').map(node => node.textContent);
+const getHoldingsOverviewSection = () => {
+	const heading = screen.getByRole('heading', {
+		name: 'Total portfolio value',
+	});
+	const section = heading.closest(
+		'[aria-labelledby="holdings-overview-heading"]'
+	);
+	expect(section).not.toBeNull();
 
-describe('LandingPage debounced search clear integration (#519)', () => {
+	return section as HTMLElement;
+};
+
+describe('LandingPage holdings empty state (#539)', () => {
 	beforeEach(() => {
 		mockMatchMedia();
 		window.localStorage.clear();
 		window.sessionStorage.clear();
 		mockGetCourses.mockReset();
-		mockGetCourses.mockImplementation(async (params?: GetCoursesParams) => {
-			if (params?.search) return [creatorBeta];
-			return allCreators;
-		});
 	});
 
-	it('re-fetches without a search param and restores the full creator list after the input is cleared', async () => {
+	it('shows empty state with CTA after holdings query settles empty', async () => {
+		mockGetCourses.mockResolvedValue([]);
+
 		render(
 			<MemoryRouter>
 				<LandingPage />
 			</MemoryRouter>
 		);
 
-		await waitFor(() => expect(mockGetCourses).toHaveBeenCalledTimes(1));
-		expect(mockGetCourses).toHaveBeenLastCalledWith(undefined);
-		await waitFor(() =>
-			expect(getCreatorTitles()).toEqual(['Creator Alpha', 'Creator Beta'])
+		await waitFor(() => expect(mockGetCourses).toHaveBeenCalled());
+
+		const empty = await screen.findByTestId('holdings-empty-state');
+		expect(empty).toBeInTheDocument();
+		expect(
+			within(getHoldingsOverviewSection()).getByRole('heading', {
+				name: 'No creator keys yet',
+			})
+		).toBeInTheDocument();
+		expect(
+			within(getHoldingsOverviewSection()).getByRole('link', {
+				name: 'Browse creators',
+			})
+		).toHaveAttribute('href', '/creators');
+		// no holding cards
+		expect(
+			within(getHoldingsOverviewSection()).queryAllByText(/\d+ keys ·/)
+				.length
+		).toBe(0);
+	});
+
+	it('keeps skeleton during loading and does not flash empty state early', async () => {
+		let resolveCourses!: (value: never[]) => void;
+		mockGetCourses.mockImplementation(
+			() =>
+				new Promise(resolve => {
+					resolveCourses = resolve;
+				})
 		);
 
-		const input = screen.getByPlaceholderText(
-			/search creators by name or handle/i
+		render(
+			<MemoryRouter>
+				<LandingPage />
+			</MemoryRouter>
 		);
 
-		fireEvent.change(input, { target: { value: 'Beta' } });
+		// While loading: empty state must not be present
+		expect(
+			screen.queryByTestId('holdings-empty-state')
+		).not.toBeInTheDocument();
 
-		await waitFor(() => expect(mockGetCourses).toHaveBeenCalledTimes(2));
-		expect(mockGetCourses).toHaveBeenLastCalledWith({ search: 'Beta' });
-		const inputClear = await screen.findByPlaceholderText(
-			/search creators by name or handle/i
-		);
-		fireEvent.change(inputClear, { target: { value: '' } });
-
-		await waitFor(() => expect(mockGetCourses).toHaveBeenCalledTimes(3));
-		expect(mockGetCourses).toHaveBeenLastCalledWith(undefined);
-		await waitFor(() =>
-			expect(getCreatorTitles()).toEqual(['Creator Alpha', 'Creator Beta'])
-		);
+		resolveCourses([]);
+		expect(
+			await screen.findByTestId('holdings-empty-state')
+		).toBeInTheDocument();
 	});
 });
