@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Copy, Check, Share2 } from 'lucide-react';
+import { Copy, Check, Share2, Pencil } from 'lucide-react';
 import showToast from '@/utils/toast.util';
 import appendUtmParams from '@/utils/utm.utils';
+import { copyTextToClipboard } from '@/utils/clipboard.utils';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import VerifiedBadge from '@/components/common/VerifiedBadge';
@@ -11,6 +12,7 @@ import CreatorBio from '@/components/common/CreatorBio';
 import { formatCreatorHandle } from '@/utils/handleDisplay.utils';
 import { normalizeCreatorDisplayName } from '@/utils/creatorDisplayName.utils';
 import { CREATOR_CARD_MEDIA_RADIUS_CLASS } from '@/utils/creatorCardTokens';
+import { isOwnWallet } from '@/utils/isOwnWallet';
 
 interface CreatorProfileHeaderProps {
 	name: string;
@@ -20,6 +22,7 @@ interface CreatorProfileHeaderProps {
 	isVerified?: boolean;
 	bio?: string | null;
 	className?: string;
+	connectedWalletAddress?: string | null;
 }
 
 const CREATOR_PROFILE_SUBTITLE_WRAP_CLASS_NAME =
@@ -33,6 +36,7 @@ const CreatorProfileHeader: React.FC<CreatorProfileHeaderProps> = ({
 	isVerified,
 	bio,
 	className,
+	connectedWalletAddress,
 }) => {
 	const [copied, setCopied] = useState(false);
 	const [isScrolled, setIsScrolled] = useState(false);
@@ -49,6 +53,10 @@ const CreatorProfileHeader: React.FC<CreatorProfileHeaderProps> = ({
 	// URL construction the caller might do via the prop.
 	const displayHandle = formatCreatorHandle(handle);
 	const displayName = normalizeCreatorDisplayName(name) || 'Unnamed creator';
+	const normalizedCreatorId =
+	creatorId == null ? creatorId : String(creatorId);
+
+const own = isOwnWallet(connectedWalletAddress, normalizedCreatorId);
 
 	const handleShare = async () => {
 		let url = window.location.href;
@@ -73,12 +81,14 @@ const CreatorProfileHeader: React.FC<CreatorProfileHeaderProps> = ({
 
 		// Fallback: copy to clipboard
 		try {
-			await navigator.clipboard.writeText(url);
+			await copyTextToClipboard(url);
 			setCopied(true);
 			showToast.success('Profile link copied to clipboard!');
 			setTimeout(() => setCopied(false), 2000);
 		} catch {
-			showToast.error('Failed to copy link');
+			showToast.error(
+				'Could not copy the profile link. Please copy it manually.'
+			);
 		}
 	};
 
@@ -160,13 +170,41 @@ const CreatorProfileHeader: React.FC<CreatorProfileHeaderProps> = ({
 					</div>
 				</div>
 
-				<div
-					className={cn(
-						'flex items-center gap-3 transition-transform duration-300',
-						isScrolled ? 'scale-90' : 'scale-100'
-					)}
-				>
-					<Button
+			<div
+				className={cn(
+					'flex items-center gap-3 transition-transform duration-300',
+					isScrolled ? 'scale-90' : 'scale-100'
+				)}
+			>
+				{own && (
+					<>
+						<Button
+							aria-label="Edit bio"
+							variant="outline"
+							className={cn(
+								'rounded-xl border-white/10 bg-white/5 font-bold text-white transition-all hover:border-amber-500/30 hover:bg-amber-500/10 active:scale-95',
+								isScrolled ? 'h-9 px-3 text-xs' : 'h-11 px-4 text-sm'
+							)}
+						>
+							<Pencil className="mr-2 size-4 text-amber-500" />
+							<span className="hidden sm:inline">Edit Bio</span>
+							<span className="sm:hidden">Edit</span>
+						</Button>
+						<Button
+							aria-label="Change avatar"
+							variant="outline"
+							className={cn(
+								'rounded-xl border-white/10 bg-white/5 font-bold text-white transition-all hover:border-amber-500/30 hover:bg-amber-500/10 active:scale-95',
+								isScrolled ? 'h-9 px-3 text-xs' : 'h-11 px-4 text-sm'
+							)}
+						>
+							<Pencil className="mr-2 size-4 text-amber-500" />
+							<span className="hidden sm:inline">Change Avatar</span>
+							<span className="sm:hidden">Avatar</span>
+						</Button>
+					</>
+				)}
+				<Button
 						onClick={handleShare}
 						variant="outline"
 						className={cn(

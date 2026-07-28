@@ -11,11 +11,12 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { formatNumber } from '@/utils/numberFormat.utils';
-import { formatDisplayKeyPrice } from '@/utils/keyPriceDisplay.utils';
+import { formatDisplayKeyPrice, estimateSellProceeds } from '@/utils/keyPriceDisplay.utils';
 import PercentageBadge from '@/components/common/PercentageBadge';
 import NetworkFeeHint from '@/components/common/NetworkFeeHint';
 import { TRADE_FEE_ESTIMATE } from '@/constants/fees';
 import { formatTransactionFeeDisplay } from '@/utils/transactionFee.utils';
+import { clampBuyQuantity } from '@/utils/buyQuantity';
 
 export type TradeSide = 'buy' | 'sell';
 
@@ -26,6 +27,8 @@ export interface TradeDialogProps {
 	availableHoldings: number;
 	/** Per-key price in stroops, shown on the buy confirmation step. */
 	keyPriceStroops?: number | null;
+	/** Current key supply for estimating sell proceeds. */
+	currentSupply?: number | null;
 	onOpenChange: (open: boolean) => void;
 	onConfirm: (amount: number) => Promise<void> | void;
 	isSubmitting?: boolean;
@@ -37,6 +40,7 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 	creatorName,
 	availableHoldings,
 	keyPriceStroops,
+	currentSupply,
 	onOpenChange,
 	onConfirm,
 	isSubmitting = false,
@@ -44,13 +48,26 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 	const [amountText, setAmountText] = useState('1');
 	const [touched, setTouched] = useState(false);
 	const amountInputRef = useRef<HTMLInputElement | null>(null);
+	const pricePreviewFailureLogged = useRef(false);
 
 	useEffect(() => {
 		if (open) {
 			setAmountText('1');
 			setTouched(false);
+			pricePreviewFailureLogged.current = false;
 		}
 	}, [open]);
+
+	const handleBlur = () => {
+		setTouched(true);
+		const normalized = amountText.trim();
+		if (normalized) {
+			const clampedResult = clampBuyQuantity(amountText);
+			if (clampedResult.adjusted) {
+				setAmountText(clampedResult.value.toString());
+			}
+		}
+	};
 
 	const parsedAmount = useMemo(() => {
 		const normalized = amountText.trim();
@@ -77,6 +94,45 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 		TRADE_FEE_ESTIMATE.DEFAULT_NETWORK_FEE,
 		{ unit: TRADE_FEE_ESTIMATE.UNIT }
 	);
+
+	const estimatedProceedsStroops = useMemo(() => {
+		if (side !== 'sell' || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+			return null;
+		}
+		return estimateSellProceeds(keyPriceStroops, currentSupply, parsedAmount);
+	}, [side, keyPriceStroops, currentSupply, parsedAmount]);
+
+	useEffect(() => {
+		if (process.env.NODE_ENV === 'test') return;
+		if (!open || pricePreviewFailureLogged.current) return;
+
+		if (side === 'buy' && keyPriceStroops == null) {
+			console.debug('[price-preview-failure]', {
+				creator_name: creatorName,
+				quantity: Number.isFinite(parsedAmount) ? parsedAmount : null,
+				side: 'buy',
+				reason: 'key_price_missing',
+				timestamp: new Date().toISOString(),
+			});
+			pricePreviewFailureLogged.current = true;
+		}
+	}, [open, side, keyPriceStroops, creatorName, parsedAmount]);
+
+	useEffect(() => {
+		if (process.env.NODE_ENV === 'test') return;
+		if (!open || pricePreviewFailureLogged.current) return;
+
+		if (side === 'sell' && estimatedProceedsStroops == null) {
+			console.debug('[price-preview-failure]', {
+				creator_name: creatorName,
+				quantity: Number.isFinite(parsedAmount) ? parsedAmount : null,
+				side: 'sell',
+				reason: 'estimate_unavailable',
+				timestamp: new Date().toISOString(),
+			});
+			pricePreviewFailureLogged.current = true;
+		}
+	}, [open, side, estimatedProceedsStroops, creatorName, parsedAmount]);
 
 	return (
 		<Dialog
@@ -126,7 +182,7 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 							setAmountText(event.target.value);
 							setTouched(true);
 						}}
-						onBlur={() => setTouched(true)}
+						onBlur={handleBlur}
 						disabled={isSubmitting}
 						className={cn(
 							'w-full rounded-xl border bg-white/[0.04] px-3 py-2 text-white outline-none transition-colors',
@@ -176,6 +232,20 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 							fee={estimatedNetworkFee}
 							className="text-white/45"
 						/>
+					)}
+					{side === 'sell' && (
+						<div className="text-xs text-white/45 mt-2">
+							{estimatedProceedsStroops != null ? (
+								<>
+									Estimated proceeds (approximate):{' '}
+									<span className="font-semibold text-amber-300/90 tabular-nums">
+										{formatDisplayKeyPrice(estimatedProceedsStroops)}
+									</span>
+								</>
+							) : (
+								<>Estimated proceeds unavailable</>
+							)}
+						</div>
 					)}
 				</div>
 
