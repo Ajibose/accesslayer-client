@@ -2,6 +2,7 @@ import { Component, type ErrorInfo, type ReactNode } from 'react';
 import { AlertCircle, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { markErrorAsCaught } from '@/utils/globalErrorHandler.utils';
 
 interface Props {
 	children: ReactNode;
@@ -37,6 +38,7 @@ class SectionErrorBoundary extends Component<Props, State> {
 	}
 
 	public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+		markErrorAsCaught(error);
 		console.error(`Uncaught error in section ${this.props.sectionName || 'Unknown'}:`, error, errorInfo);
 	}
 
