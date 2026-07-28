@@ -5,6 +5,8 @@ export const queryKeys = {
 		all: ['creators'] as const,
 		list: (params?: GetCoursesParams) =>
 			['creators', 'list', params ?? null] as const,
+		infiniteList: (params?: Omit<GetCoursesParams, 'page'>) =>
+			['creators', 'infiniteList', params ?? null] as const,
 		detail: (id: string) => ['creators', 'detail', id] as const,
 		holders: (creatorId: string) =>
 			['creators', creatorId, 'holders'] as const,
