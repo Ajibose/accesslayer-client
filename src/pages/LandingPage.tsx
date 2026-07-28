@@ -59,6 +59,11 @@ import {
 	formatPortfolioValueDisplay,
 	getPortfolioValueHelperText,
 } from '@/utils/portfolioValue.utils';
+import {
+	buildStellarExpertTxUrl,
+	truncateTxHash,
+} from '@/constants/stellar';
+import { env } from '@/utils/env.utils';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { CREATOR_LIST_SORT_LAYOUT_TRANSITION } from '@/utils/creatorListSortTransition';
 import { AlertCircle, ChevronDown, RefreshCw } from 'lucide-react';
@@ -639,11 +644,20 @@ function LandingPage() {
 
 			await new Promise<void>(resolve => window.setTimeout(resolve, 250));
 
+			// Simulated transaction hash — replace with the real hash once the
+			// on-chain mutation is wired up.
+			const txHash =
+				'0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890';
+			const explorerUrl = buildStellarExpertTxUrl(
+				txHash,
+				env.VITE_STELLAR_NETWORK
+			);
+
 			showToast.transactionSuccess(
-				'Trade confirmed',
-				tradeSide === 'buy'
-					? `Holdings refreshed: +${formatNumber(amount)} keys.`
-					: `Holdings refreshed: -${formatNumber(amount)} keys.`
+				'Transaction confirmed',
+				truncateTxHash(txHash),
+				txHash,
+				explorerUrl
 			);
 			setTradeDialogOpen(false);
 		} catch (error) {
