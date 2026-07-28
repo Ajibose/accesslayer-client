@@ -5,6 +5,10 @@ import { queryKeys } from '@/lib/queryKeys';
 
 const FIRST_PAGE = 1;
 
+// #691 — cached pages are served instantly and treated as fresh for this
+// long; a background refetch only kicks in once data is older than this.
+const MARKETPLACE_STALE_TIME_MS = 60_000;
+
 /**
  * Cursor-based (page-number) infinite pagination over the creator key
  * marketplace listing, backed by React Query's useInfiniteQuery (#685).
@@ -13,6 +17,11 @@ const FIRST_PAGE = 1;
  * paged fetches: only the first page loads initially, later pages fetch on
  * demand via `fetchNextPage` (wire this to a useInfiniteScroll sentinel),
  * and fetching stops once the last page reports `hasMore: false`.
+ *
+ * #691 — `staleTime` enables stale-while-revalidate: a cached list renders
+ * immediately (no spinner) on remount within 60s, while React Query silently
+ * refetches in the background once it's stale. `isRefreshing` distinguishes
+ * that silent background refetch from the initial (spinner-worthy) load.
  */
 export function useInfiniteCreatorMarketplace(params?: Omit<GetCoursesParams, 'page'>) {
 	const query = useInfiniteQuery({
@@ -20,6 +29,7 @@ export function useInfiniteCreatorMarketplace(params?: Omit<GetCoursesParams, 'p
 		queryFn: ({ pageParam }) => courseService.getCoursesPage(pageParam, params),
 		initialPageParam: FIRST_PAGE,
 		getNextPageParam: lastPage => (lastPage.hasMore ? lastPage.page + 1 : undefined),
+		staleTime: MARKETPLACE_STALE_TIME_MS,
 	});
 
 	// De-duplicate creators across pages by id -- a creator that shifts
@@ -43,6 +53,10 @@ export function useInfiniteCreatorMarketplace(params?: Omit<GetCoursesParams, 'p
 		hasMore: query.hasNextPage,
 		isLoadingFirstPage: query.isLoading,
 		isFetchingNextPage: query.isFetchingNextPage,
+		// True only while a background revalidation is in flight after data
+		// has already been shown once — never true during the very first,
+		// spinner-worthy load (that's isLoadingFirstPage).
+		isRefreshing: query.isFetching && !query.isLoading && !query.isFetchingNextPage,
 		fetchNextPage: query.fetchNextPage,
 		error: query.error,
 	};

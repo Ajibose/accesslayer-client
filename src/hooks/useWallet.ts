@@ -136,9 +136,18 @@ export function useTradeMutation(address: string) {
 			);
 		},
 		onSettled: (_data, _error, variables) => {
-			const invalidatedKeys = [queryKeys.wallet.holdings(address)];
+			// #691 — a completed buy/sell changes supply/price data backing the
+			// marketplace list, so its cache must not wait out the 60s
+			// staleTime; invalidate immediately regardless of the trade outcome.
+			const invalidatedKeys = [
+				queryKeys.wallet.holdings(address),
+				queryKeys.creators.all,
+			];
 			queryClient.invalidateQueries({
 				queryKey: queryKeys.wallet.holdings(address),
+			});
+			queryClient.invalidateQueries({
+				queryKey: queryKeys.creators.all,
 			});
 
 			if (process.env.NODE_ENV !== 'test') {
