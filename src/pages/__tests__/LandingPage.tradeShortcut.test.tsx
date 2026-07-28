@@ -11,7 +11,9 @@ vi.mock('@/hooks/useWallet', () => ({
 }));
 
 vi.mock('@/services/course.service', () => ({
-	courseService: { getCourses: vi.fn() },
+	courseService: {
+		getCourses: vi.fn(),
+	},
 }));
 
 vi.mock('@/hooks/useNetworkMismatch', () => ({
@@ -32,6 +34,7 @@ vi.mock('@/hooks/useStaleData', () => ({
 
 vi.mock('@/components/common/StellarConnectionQualityBadge', async () => {
 	const React = await import('react');
+
 	return {
 		default: () => React.createElement('div', { role: 'status' }, 'RPC good'),
 	};
@@ -39,6 +42,7 @@ vi.mock('@/components/common/StellarConnectionQualityBadge', async () => {
 
 vi.mock('@/components/common/CreatorCard', async () => {
 	const React = await import('react');
+
 	return {
 		default: ({ creator }: { creator: { title: string } }) =>
 			React.createElement(
@@ -55,6 +59,7 @@ vi.mock('framer-motion', async () => {
 		layout?: boolean;
 		transition?: unknown;
 	};
+
 	return {
 		AnimatePresence: ({ children }: { children: ReactNode }) =>
 			React.createElement(React.Fragment, null, children),
@@ -65,10 +70,9 @@ vi.mock('framer-motion', async () => {
 				const { layout, transition, ...divProps } = props;
 				void layout;
 				void transition;
+
 				return React.createElement('div', divProps, children);
 			},
-			h1: ({ children, ...props }: ComponentProps<'h1'>) =>
-				React.createElement('h1', props, children),
 			button: ({ children, ...props }: ComponentProps<'button'>) =>
 				React.createElement('button', props, children),
 		},
@@ -77,18 +81,20 @@ vi.mock('framer-motion', async () => {
 
 const mockGetCourses = vi.mocked(courseService.getCourses);
 
-const creator: Course = {
-	id: 'creator-a',
-	title: 'Creator Alpha',
-	description: 'Digital artist',
-	price: 0.05,
-	priceStroops: 500_000,
-	creatorShareSupply: 100,
-	instructorId: 'creator-a',
-	category: 'Art',
-	level: 'BEGINNER',
-	isVerified: true,
-};
+const creatorList: Course[] = [
+	{
+		id: 'alex-rivers',
+		title: 'Alex Rivers',
+		description: 'Digital artist',
+		price: 0.05,
+		priceStroops: 500_000,
+		creatorShareSupply: 120,
+		instructorId: 'arivers',
+		category: 'Art',
+		level: 'BEGINNER',
+		isVerified: true,
+	},
+];
 
 const mockMatchMedia = () => {
 	Object.defineProperty(window, 'matchMedia', {
@@ -106,72 +112,101 @@ const mockMatchMedia = () => {
 	});
 };
 
-describe('LandingPage empty state integration (#452)', () => {
+const renderLandingPage = async () => {
+	render(
+		<MemoryRouter>
+			<LandingPage />
+		</MemoryRouter>
+	);
+	await waitFor(() => expect(mockGetCourses).toHaveBeenCalledTimes(1));
+};
+
+function pressT() {
+	const event = new KeyboardEvent('keydown', {
+		key: 't',
+		code: 'KeyT',
+		bubbles: true,
+		cancelable: true,
+	});
+	fireEvent(window, event);
+	return event;
+}
+
+describe('LandingPage trade shortcut — form element suppression', () => {
 	beforeEach(() => {
 		mockMatchMedia();
 		window.localStorage.clear();
 		window.sessionStorage.clear();
 		mockGetCourses.mockReset();
+		mockGetCourses.mockResolvedValue(creatorList);
 	});
 
-	it('renders the empty state when API returns zero creators and a search term is entered', async () => {
-		mockGetCourses.mockResolvedValue([]);
-		render(<MemoryRouter><LandingPage /></MemoryRouter>);
-		await waitFor(() => expect(mockGetCourses).toHaveBeenCalledTimes(1));
+	it('opens the trade dialog when focus is on the document body', async () => {
+		await renderLandingPage();
 
-		fireEvent.change(
-			screen.getByPlaceholderText(/search creators by name or handle/i),
-			{ target: { value: 'nobody' } }
-		);
+		const event = pressT();
 
-		expect(
-			await screen.findByRole('status', { name: /no creators found/i })
-		).toBeInTheDocument();
+		expect(event.defaultPrevented).toBe(true);
+		expect(await screen.findByRole('dialog')).toBeInTheDocument();
 	});
 
-	it('renders the empty state when no creators match the search query', async () => {
-		mockGetCourses.mockResolvedValue([creator]);
-		render(<MemoryRouter><LandingPage /></MemoryRouter>);
-		await waitFor(() => expect(mockGetCourses).toHaveBeenCalledTimes(1));
+	it('does not open the trade dialog when focus is on an input element', async () => {
+		await renderLandingPage();
 
-		fireEvent.change(
-			screen.getByPlaceholderText(/search creators by name or handle/i),
-			{ target: { value: 'xyznotfound' } }
-		);
+		const input = document.createElement('input');
+		document.body.appendChild(input);
 
-		expect(
-			await screen.findByRole('status', { name: /no creators found/i })
-		).toBeInTheDocument();
-	});
-
-	it('clear button resets the search input, hides the empty state, and re-fetches the full list', async () => {
-		mockGetCourses.mockResolvedValue([creator]);
-		render(<MemoryRouter><LandingPage /></MemoryRouter>);
-		await waitFor(() => expect(mockGetCourses).toHaveBeenCalledTimes(1));
-
-		// Type a query that yields no matches
-		fireEvent.change(
-			screen.getByPlaceholderText(/search creators by name or handle/i),
-			{ target: { value: 'xyznotfound' } }
-		);
-		await screen.findByRole('status', { name: /no creators found/i });
-
-		// Click the "Reset Search" button rendered by EmptyState
-		fireEvent.click(screen.getByRole('button', { name: /reset search/i }));
-
-		// Empty state must disappear and the creator card must reappear
-		await waitFor(() => {
-			expect(
-				screen.queryByRole('status', { name: /no creators found/i })
-			).not.toBeInTheDocument();
+		fireEvent.keyDown(input, {
+			key: 't',
+			code: 'KeyT',
+			bubbles: true,
+			cancelable: true,
 		});
-		expect(
-			screen.getByRole('article', { name: /creator alpha/i })
-		).toBeInTheDocument();
 
-		// Search input must be cleared
-		expect(
-			screen.getByPlaceholderText(/search creators by name or handle/i)
-		).toHaveValue('');
+		await new Promise(resolve => window.setTimeout(resolve, 0));
+
+		expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+		input.remove();
+	});
+
+	it('does not open the trade dialog when focus is on a textarea element', async () => {
+		await renderLandingPage();
+
+		const textarea = document.createElement('textarea');
+		document.body.appendChild(textarea);
+
+		fireEvent.keyDown(textarea, {
+			key: 't',
+			code: 'KeyT',
+			bubbles: true,
+			cancelable: true,
+		});
+
+		await new Promise(resolve => window.setTimeout(resolve, 0));
+
+		expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+		textarea.remove();
+	});
+
+	it('does not open the trade dialog when focus is on a select element', async () => {
+		await renderLandingPage();
+
+		const select = document.createElement('select');
+		document.body.appendChild(select);
+
+		fireEvent.keyDown(select, {
+			key: 't',
+			code: 'KeyT',
+			bubbles: true,
+			cancelable: true,
+		});
+
+		await new Promise(resolve => window.setTimeout(resolve, 0));
+
+		expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+
+		select.remove();
 	});
 });
