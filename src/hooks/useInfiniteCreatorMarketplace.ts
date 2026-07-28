@@ -1,5 +1,5 @@
 import { useInfiniteQuery } from '@tanstack/react-query';
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { courseService, type Course, type GetCoursesParams } from '@/services/course.service';
 import { queryKeys } from '@/lib/queryKeys';
 
@@ -21,6 +21,31 @@ export function useInfiniteCreatorMarketplace(params?: Omit<GetCoursesParams, 'p
 		initialPageParam: FIRST_PAGE,
 		getNextPageParam: lastPage => (lastPage.hasMore ? lastPage.page + 1 : undefined),
 	});
+
+	// Track whether we've already logged a background refetch for the
+	// current fetch cycle so the debug log fires exactly once per refetch.
+	const hasLoggedRefetchRef = useRef(false);
+
+	// Structured debug log on stale-while-revalidate background refetch (#595).
+	// Fires when isFetching transitions to true while isLoading is false,
+	// which means the data is being silently refreshed in the background
+	// rather than loading for the first time. Skipped in test environments.
+	useEffect(() => {
+		if (import.meta.env.MODE === 'test') return;
+
+		if (query.isFetching && !query.isLoading) {
+			if (!hasLoggedRefetchRef.current) {
+				hasLoggedRefetchRef.current = true;
+				console.debug('[query-background-refetch]', {
+					query_key: queryKeys.creators.infiniteList(params),
+					stale_time_ms: 0,
+					refetch_triggered_at: new Date().toISOString(),
+				});
+			}
+		} else {
+			hasLoggedRefetchRef.current = false;
+		}
+	}, [query.isFetching, query.isLoading, params]);
 
 	// De-duplicate creators across pages by id -- a creator that shifts
 	// position between page fetches (e.g. sort order changing as data
