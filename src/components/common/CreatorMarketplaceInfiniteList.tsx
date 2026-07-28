@@ -23,6 +23,7 @@ export default function CreatorMarketplaceInfiniteList({
 		hasMore,
 		isLoadingFirstPage,
 		isFetchingNextPage,
+		isRefreshing,
 		fetchNextPage,
 	} = useInfiniteCreatorMarketplace(params);
 
@@ -44,6 +45,16 @@ export default function CreatorMarketplaceInfiniteList({
 
 	return (
 		<div data-testid="creator-marketplace-infinite-list">
+			{isRefreshing && (
+				<div
+					data-testid="creator-marketplace-refreshing-indicator"
+					role="status"
+					aria-live="polite"
+					className="mb-3 text-xs text-muted-foreground"
+				>
+					Refreshing…
+				</div>
+			)}
 			<div className="grid w-full grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
 				{creators.map(creator => (
 					<CreatorCard key={creator.id} creator={creator} />

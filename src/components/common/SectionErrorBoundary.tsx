@@ -8,6 +8,17 @@ interface Props {
 	sectionName?: string;
 	minHeight?: string | number;
 	className?: string;
+	/**
+	 * Overrides the default "Something went wrong in this section" heading.
+	 * Use for a short, section-specific message (e.g. "Chart unavailable —
+	 * try refreshing").
+	 */
+	title?: string;
+	/**
+	 * Overrides the default explanatory paragraph. Pass an empty string to
+	 * show only the title (no secondary copy).
+	 */
+	description?: string;
 }
 
 interface State {
@@ -48,14 +59,16 @@ class SectionErrorBoundary extends Component<Props, State> {
 					<div className="flex flex-col items-center gap-2">
 						<AlertCircle className="h-10 w-10 text-destructive" />
 						<h3 className="text-lg font-semibold">
-							Something went wrong in this section
+							{this.props.title ?? 'Something went wrong in this section'}
 						</h3>
-						<p className="max-w-md text-sm text-muted-foreground">
-							{this.props.sectionName 
-								? `We encountered an error while loading the ${this.props.sectionName}.` 
-								: 'We encountered an error while loading this content.'}
-							Please try again or contact support if the issue persists.
-						</p>
+						{this.props.description !== '' && (
+							<p className="max-w-md text-sm text-muted-foreground">
+								{this.props.description ??
+									(this.props.sectionName
+										? `We encountered an error while loading the ${this.props.sectionName}. Please try again or contact support if the issue persists.`
+										: 'We encountered an error while loading this content. Please try again or contact support if the issue persists.')}
+							</p>
+						)}
 					</div>
 					<Button
 						variant="outline"
