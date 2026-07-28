@@ -45,6 +45,22 @@ export interface GetCoursesParams {
 	sort?: Exclude<CourseSortOption, 'featured'>;
 }
 
+/** Raw envelope shape for a paginated /courses response. */
+interface CoursesPageEnvelope {
+	items?: Course[];
+	data?: Course[];
+	has_more?: boolean;
+	hasMore?: boolean;
+}
+
+export interface CoursesPage {
+	items: Course[];
+	/** The page number that was requested (used as this page's cursor). */
+	page: number;
+	/** Whether another page is available after this one. */
+	hasMore: boolean;
+}
+
 class CourseService extends BaseApiService {
 	private readonly PROFILE_CACHE_TTL = 30000; // 30 seconds
 
@@ -63,6 +79,46 @@ class CourseService extends BaseApiService {
 			const data = response.data.data;
 			cacheManager.set(cacheKey, data, this.PROFILE_CACHE_TTL);
 			return data;
+		} catch (error) {
+			throw this.handleError(error);
+		}
+	}
+
+	/**
+	 * Get one cursor-paginated page of courses for infinite-scroll marketplace
+	 * browsing - GET /courses (#685). `page` is used as the cursor: pass the
+	 * previous response's `page + 1` to fetch the next page.
+	 *
+	 * `hasMore` is read from the response's `has_more`/`hasMore` field when
+	 * the backend provides it, falling back to "this page was full" (item
+	 * count equals the requested limit) when it doesn't -- a full page means
+	 * there could be more, an under-full page means we've reached the end.
+	 */
+	async getCoursesPage(
+		page: number,
+		params?: Omit<GetCoursesParams, 'page'>
+	): Promise<CoursesPage> {
+		const limit = params?.limit ?? 20;
+		const requestParams: GetCoursesParams = { ...params, page, limit };
+		const cacheKey = `courses_page_${JSON.stringify(requestParams)}`;
+		const cached = cacheManager.get<CoursesPage>(cacheKey);
+		if (cached) return cached;
+
+		try {
+			const response = await this.api.get<APIResponse<CoursesPageEnvelope | Course[]>>(
+				'/courses',
+				{ params: requestParams }
+			);
+
+			const raw = response.data.data;
+			const items: Course[] = Array.isArray(raw) ? raw : (raw.items ?? raw.data ?? []);
+			const hasMore: boolean = Array.isArray(raw)
+				? items.length === limit
+				: (raw.has_more ?? raw.hasMore ?? items.length === limit);
+
+			const result: CoursesPage = { items, page, hasMore };
+			cacheManager.set(cacheKey, result, this.PROFILE_CACHE_TTL);
+			return result;
 		} catch (error) {
 			throw this.handleError(error);
 		}
