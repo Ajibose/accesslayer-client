@@ -36,6 +36,9 @@ export function useInfiniteCreatorMarketplace(params?: Omit<GetCoursesParams, 'p
 	// current fetch cycle so the debug log fires exactly once per refetch.
 	const hasLoggedRefetchRef = useRef(false);
 
+	// Track page count to emit a debug log when a new page is fetched via scroll.
+	const pageCountRef = useRef(0);
+
 	// Structured debug log on stale-while-revalidate background refetch (#595).
 	// Fires when isFetching transitions to true while isLoading is false,
 	// which means the data is being silently refreshed in the background
@@ -56,6 +59,27 @@ export function useInfiniteCreatorMarketplace(params?: Omit<GetCoursesParams, 'p
 			hasLoggedRefetchRef.current = false;
 		}
 	}, [query.isFetching, query.isLoading, params]);
+
+	// Structured debug log on infinite scroll next page fetch (#624).
+	// Emits when the data pages array grows beyond its previous length,
+	// ignoring the initial page load (when pageCountRef is 0).
+	useEffect(() => {
+		if (import.meta.env.MODE === 'test') return;
+		if (!query.data) return;
+
+		const currentPages = query.data.pages;
+		// Log if page count increased and it wasn't the initial load
+		if (currentPages.length > pageCountRef.current && pageCountRef.current > 0) {
+			const lastPage = currentPages[currentPages.length - 1];
+			console.debug('[infinite-scroll-next-page]', {
+				cursor: lastPage.page,
+				results_fetched: lastPage.items.length,
+				has_more: lastPage.hasMore,
+				fetched_at: new Date().toISOString(),
+			});
+		}
+		pageCountRef.current = currentPages.length;
+	}, [query.data]);
 
 	// De-duplicate creators across pages by id -- a creator that shifts
 	// position between page fetches (e.g. sort order changing as data
