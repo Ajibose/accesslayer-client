@@ -1,8 +1,9 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { queryKeys } from '@/lib/queryKeys';
 import type { HeldKeyPosition } from '@/utils/portfolioValue.utils';
 import showToast from '@/utils/toast.util';
 import { getSignatureErrorMessage } from '@/utils/errorHandling.utils';
+import { fetchWalletActivityPage } from '@/services/walletActivity.service';
 
 export function useWalletHoldings(address: string) {
 	return useQuery<HeldKeyPosition[]>({
@@ -12,10 +13,22 @@ export function useWalletHoldings(address: string) {
 	});
 }
 
+/**
+ * Paginated wallet activity feed.
+ *
+ * #677 — uses `useInfiniteQuery` so the feed can incrementally load
+ * older trades via `fetchNextPage()` triggered by an `IntersectionObserver`
+ * sentinel mounted at the bottom of the list. The query key is the same
+ * `queryKeys.wallet.activity(address)` constant used by the original
+ * `useQuery` implementation so existing cache-key tests continue to pass.
+ */
 export function useWalletActivity(address: string) {
-	return useQuery({
+	return useInfiniteQuery({
 		queryKey: queryKeys.wallet.activity(address),
-		queryFn: async () => [],
+		queryFn: ({ pageParam }) =>
+			fetchWalletActivityPage(address, pageParam ?? 1),
+		initialPageParam: 1,
+		getNextPageParam: lastPage => lastPage.nextPage,
 		enabled: !!address,
 	});
 }
