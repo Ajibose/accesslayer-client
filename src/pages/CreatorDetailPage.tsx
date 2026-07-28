@@ -3,6 +3,7 @@ import { useCreatorDetail } from '@/hooks/useCreators';
 import CreatorBreadcrumb from '@/components/common/CreatorBreadcrumb';
 import CreatorProfileHeader from '@/components/common/CreatorProfileHeader';
 import CreatorProfileInfoGrid from '@/components/common/CreatorProfileInfoGrid';
+import CreatorActivityFeed from '@/components/common/CreatorActivityFeed';
 import { CreatorProfileHeaderSkeleton } from '@/components/common/CreatorSkeleton';
 import { bpsToPercent } from '@/utils/numberFormat.utils';
 import CreatorPageErrorBoundary from '@/components/common/CreatorPageErrorBoundary';
@@ -66,6 +67,12 @@ function CreatorDetailPageContent() {
 						Fee Structure
 					</h2>
 					<CreatorProfileInfoGrid items={feeItems} />
+				</div>
+				<div className="mt-8 rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 shadow-2xl backdrop-blur-md md:p-8">
+					<h2 className="font-grotesque text-xl font-black tracking-tight text-white mb-6">
+						Activity
+					</h2>
+					<CreatorActivityFeed creatorId={creator.id} />
 				</div>
 			</div>
 		</main>
