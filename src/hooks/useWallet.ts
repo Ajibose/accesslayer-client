@@ -90,12 +90,24 @@ export function useTradeMutation(address: string) {
 			return { previousHoldings };
 		},
 		onError: (error, variables, context) => {
+			const holdingsKey = queryKeys.wallet.holdings(address);
+
 			if (context?.previousHoldings) {
-				queryClient.setQueryData(
-					queryKeys.wallet.holdings(address),
-					context.previousHoldings
-				);
+				queryClient.setQueryData(holdingsKey, context.previousHoldings);
+			} else if (process.env.NODE_ENV !== 'test') {
+				// No snapshot was captured in onMutate (e.g. it threw before
+				// returning), so the rollback above cannot run and the cache
+				// may be left holding the optimistic (unconfirmed) update.
+				console.warn('[optimistic-rollback]', {
+					cache_key: JSON.stringify(holdingsKey),
+					action:
+						(variables as TradeVariables).amount > 0 ? 'buy' : 'sell',
+					creator_id: (variables as TradeVariables).creatorId,
+					reason: 'snapshot_missing',
+					failed_at: new Date().toISOString(),
+				});
 			}
+
 			showToast.error(getSignatureErrorMessage(error));
 
 			// Emit structured log for failed transaction
