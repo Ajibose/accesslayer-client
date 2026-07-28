@@ -12,6 +12,7 @@ import {
 	ExternalLink,
 } from 'lucide-react';
 import { Sparkline } from '@/components/ui/sparkline';
+import SectionErrorBoundary from '@/components/common/SectionErrorBoundary';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -367,29 +368,36 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 				else if (latest < earliest) lineColor = '#ef4444';
 
 				return (
-					<div className="mt-3">
-						<Sparkline
-							data={creator.priceHistory}
-							color={lineColor}
-						/>
-						<table id={priceChartDescriptionId} className="sr-only">
-							<caption>{priceChartAccessibility.summary}</caption>
-							<thead>
-								<tr>
-									<th scope="col">Point</th>
-									<th scope="col">Key price</th>
-								</tr>
-							</thead>
-							<tbody>
-								{priceChartAccessibility.points.map(point => (
-									<tr key={point.label}>
-										<th scope="row">{point.label}</th>
-										<td>{point.value}</td>
+					<SectionErrorBoundary
+						sectionName="bonding curve chart"
+						title="Chart unavailable — try refreshing"
+						description=""
+						minHeight={40}
+					>
+						<div className="mt-3">
+							<Sparkline
+								data={creator.priceHistory}
+								color={lineColor}
+							/>
+							<table id={priceChartDescriptionId} className="sr-only">
+								<caption>{priceChartAccessibility.summary}</caption>
+								<thead>
+									<tr>
+										<th scope="col">Point</th>
+										<th scope="col">Key price</th>
 									</tr>
-								))}
-							</tbody>
-						</table>
-					</div>
+								</thead>
+								<tbody>
+									{priceChartAccessibility.points.map(point => (
+										<tr key={point.label}>
+											<th scope="row">{point.label}</th>
+											<td>{point.value}</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
+					</SectionErrorBoundary>
 				);
 			})()}
 
