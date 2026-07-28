@@ -16,6 +16,7 @@ import PercentageBadge from '@/components/common/PercentageBadge';
 import NetworkFeeHint from '@/components/common/NetworkFeeHint';
 import { TRADE_FEE_ESTIMATE } from '@/constants/fees';
 import { formatTransactionFeeDisplay } from '@/utils/transactionFee.utils';
+import { clampBuyQuantity } from '@/utils/buyQuantity';
 
 export type TradeSide = 'buy' | 'sell';
 
@@ -47,13 +48,26 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 	const [amountText, setAmountText] = useState('1');
 	const [touched, setTouched] = useState(false);
 	const amountInputRef = useRef<HTMLInputElement | null>(null);
+	const pricePreviewFailureLogged = useRef(false);
 
 	useEffect(() => {
 		if (open) {
 			setAmountText('1');
 			setTouched(false);
+			pricePreviewFailureLogged.current = false;
 		}
 	}, [open]);
+
+	const handleBlur = () => {
+		setTouched(true);
+		const normalized = amountText.trim();
+		if (normalized) {
+			const clampedResult = clampBuyQuantity(amountText);
+			if (clampedResult.adjusted) {
+				setAmountText(clampedResult.value.toString());
+			}
+		}
+	};
 
 	const parsedAmount = useMemo(() => {
 		const normalized = amountText.trim();
@@ -87,6 +101,38 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 		}
 		return estimateSellProceeds(keyPriceStroops, currentSupply, parsedAmount);
 	}, [side, keyPriceStroops, currentSupply, parsedAmount]);
+
+	useEffect(() => {
+		if (process.env.NODE_ENV === 'test') return;
+		if (!open || pricePreviewFailureLogged.current) return;
+
+		if (side === 'buy' && keyPriceStroops == null) {
+			console.debug('[price-preview-failure]', {
+				creator_name: creatorName,
+				quantity: Number.isFinite(parsedAmount) ? parsedAmount : null,
+				side: 'buy',
+				reason: 'key_price_missing',
+				timestamp: new Date().toISOString(),
+			});
+			pricePreviewFailureLogged.current = true;
+		}
+	}, [open, side, keyPriceStroops, creatorName, parsedAmount]);
+
+	useEffect(() => {
+		if (process.env.NODE_ENV === 'test') return;
+		if (!open || pricePreviewFailureLogged.current) return;
+
+		if (side === 'sell' && estimatedProceedsStroops == null) {
+			console.debug('[price-preview-failure]', {
+				creator_name: creatorName,
+				quantity: Number.isFinite(parsedAmount) ? parsedAmount : null,
+				side: 'sell',
+				reason: 'estimate_unavailable',
+				timestamp: new Date().toISOString(),
+			});
+			pricePreviewFailureLogged.current = true;
+		}
+	}, [open, side, estimatedProceedsStroops, creatorName, parsedAmount]);
 
 	return (
 		<Dialog
@@ -136,7 +182,7 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 							setAmountText(event.target.value);
 							setTouched(true);
 						}}
-						onBlur={() => setTouched(true)}
+						onBlur={handleBlur}
 						disabled={isSubmitting}
 						className={cn(
 							'w-full rounded-xl border bg-white/[0.04] px-3 py-2 text-white outline-none transition-colors',
