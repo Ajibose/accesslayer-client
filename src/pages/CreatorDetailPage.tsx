@@ -7,10 +7,12 @@ import { CreatorProfileHeaderSkeleton } from '@/components/common/CreatorSkeleto
 import { bpsToPercent } from '@/utils/numberFormat.utils';
 import CreatorPageErrorBoundary from '@/components/common/CreatorPageErrorBoundary';
 import { ApiError } from '@/services/api.service';
+import { useNavigationTiming } from '@/hooks/useNavigationTiming';
 
 function CreatorDetailPageContent() {
 	const { id } = useParams<{ id: string }>();
 	const { data: creator, isLoading, error } = useCreatorDetail(id || '');
+	useNavigationTiming('creator_profile');
 
 	if (isLoading) {
 		return (
