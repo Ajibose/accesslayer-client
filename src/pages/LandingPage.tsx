@@ -67,6 +67,7 @@ import {
 	getPortfolioValueHelperText,
 } from '@/utils/portfolioValue.utils';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
+import { useNavigationTiming } from '@/hooks/useNavigationTiming';
 import { CREATOR_LIST_SORT_LAYOUT_TRANSITION } from '@/utils/creatorListSortTransition';
 import { creatorListKey } from '@/utils/creatorListKey.utils';
 import { Check, ChevronDown, Copy, RefreshCw } from 'lucide-react';
@@ -240,6 +241,8 @@ type SortOption = 'featured' | 'price-asc' | 'price-desc' | 'supply-desc';
 type CreatorListMode = 'pagination' | 'infinite';
 
 function LandingPage() {
+	useNavigationTiming('portfolio');
+
 	const [creators, setCreators] = useState<Course[]>([]);
 	// Creators used for wallet holdings; kept separate from the marketplace
 	// list so an empty API holdings response can show zero positions while
