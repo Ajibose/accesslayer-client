@@ -13,6 +13,7 @@ import { formatCreatorHandle } from '@/utils/handleDisplay.utils';
 import { normalizeCreatorDisplayName } from '@/utils/creatorDisplayName.utils';
 import { CREATOR_CARD_MEDIA_RADIUS_CLASS } from '@/utils/creatorCardTokens';
 import { isOwnWallet } from '@/utils/isOwnWallet';
+import { useFormatXlm } from '@/hooks/useFormatXlm';
 
 interface CreatorProfileHeaderProps {
 	name: string;
@@ -21,6 +22,7 @@ interface CreatorProfileHeaderProps {
 	avatarUrl?: string;
 	isVerified?: boolean;
 	bio?: string | null;
+	priceStroops?: number | null;
 	className?: string;
 	connectedWalletAddress?: string | null;
 }
@@ -35,11 +37,13 @@ const CreatorProfileHeader: React.FC<CreatorProfileHeaderProps> = ({
 	avatarUrl,
 	isVerified,
 	bio,
+	priceStroops,
 	className,
 	connectedWalletAddress,
 }) => {
 	const [copied, setCopied] = useState(false);
 	const [isScrolled, setIsScrolled] = useState(false);
+	const { format } = useFormatXlm();
 
 	useEffect(() => {
 		const handleScroll = () => {
@@ -93,6 +97,10 @@ const own = isOwnWallet(connectedWalletAddress, normalizedCreatorId);
 	};
 
 	const canNativeShare = typeof navigator !== 'undefined' && !!navigator.share;
+	const displayPrice =
+		priceStroops != null && Number.isFinite(priceStroops)
+			? `${format(priceStroops)} XLM`
+			: null;
 
 	return (
 		<div
@@ -161,6 +169,16 @@ const own = isOwnWallet(connectedWalletAddress, normalizedCreatorId);
 									collapsible
 									className="mt-2 max-w-md"
 								/>
+								{displayPrice && (
+									<div className="mt-3 inline-flex items-center gap-2 rounded-full border border-amber-500/20 bg-amber-500/10 px-3 py-1.5">
+										<span className="text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-white/45">
+											Current key price
+										</span>
+										<span className="font-jakarta text-sm font-semibold text-amber-300">
+											{displayPrice}
+										</span>
+									</div>
+								)}
 							</div>
 						) : (
 							<p className="font-jakarta text-xs text-white/50 truncate">
