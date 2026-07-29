@@ -6,6 +6,7 @@ import CreatorProfileInfoGrid from '@/components/common/CreatorProfileInfoGrid';
 import CreatorActivityFeed from '@/components/common/CreatorActivityFeed';
 import { CreatorProfileHeaderSkeleton } from '@/components/common/CreatorSkeleton';
 import { bpsToPercent } from '@/utils/numberFormat.utils';
+import { resolveCreatorKeyPriceStroops } from '@/utils/keyPriceDisplay.utils';
 import CreatorPageErrorBoundary from '@/components/common/CreatorPageErrorBoundary';
 import { ApiError } from '@/services/api.service';
 import { useNavigationTiming } from '@/hooks/useNavigationTiming';
