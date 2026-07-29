@@ -128,3 +128,40 @@ export function getPortfolioValueHelperText(result: PortfolioValueResult) {
 
 	return `Across ${result.heldPositionCount} held creator ${result.heldPositionCount === 1 ? 'position' : 'positions'}.`;
 }
+
+/**
+ * Calculates the total value (in stroops) for a single held key position.
+ */
+export function calculatePositionTotalValue(
+	position: HeldKeyPosition
+): number | null {
+	const priceStroops = resolveCreatorKeyPriceStroops(position);
+	const quantity = normalizeHeldQuantity(position.quantity);
+
+	if (priceStroops == null || quantity === 0) {
+		return null;
+	}
+
+	return priceStroops * quantity;
+}
+
+/**
+ * Sorts held key positions by total value in descending order.
+ * Positions with equal total values maintain a stable secondary sort by creator ID.
+ */
+export function sortHoldingsByTotalValue(
+	positions: HeldKeyPosition[]
+): HeldKeyPosition[] {
+	return [...positions].sort((a, b) => {
+		const aValue = calculatePositionTotalValue(a) ?? 0;
+		const bValue = calculatePositionTotalValue(b) ?? 0;
+
+		// Primary sort: descending by total value
+		if (bValue !== aValue) {
+			return bValue - aValue;
+		}
+
+		// Secondary sort: stable by creator ID for equal values
+		return a.creatorId.localeCompare(b.creatorId);
+	});
+}

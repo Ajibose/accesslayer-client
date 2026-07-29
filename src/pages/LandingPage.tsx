@@ -37,6 +37,10 @@ import showToast from '@/utils/toast.util';
 import { getSignatureErrorMessage } from '@/utils/errorHandling.utils';
 import { formatCompactNumber, formatNumber } from '@/utils/numberFormat.utils';
 import { formatOwnershipPercent } from '@/utils/ownership.utils';
+import {
+	calculatePortfolioValue,
+	sortHoldingsByTotalValue,
+} from '@/utils/portfolioValue.utils';
 import PrecisionModeToggle, {
 	type PrecisionMode,
 } from '@/components/common/PrecisionModeToggle';
@@ -299,7 +303,10 @@ function LandingPage() {
 	const prefersReducedMotion = usePrefersReducedMotion();
 	const [sortOption, setSortOption] = useState<SortOption>(() => {
 		const sort = searchParams.get('sort') as SortOption | null;
-		if (sort && ['featured', 'price-asc', 'price-desc', 'supply-desc'].includes(sort)) {
+		if (
+			sort &&
+			['featured', 'price-asc', 'price-desc', 'supply-desc'].includes(sort)
+		) {
 			sortOptionRef.current = sort;
 			return sort;
 		}
@@ -386,7 +393,13 @@ function LandingPage() {
 			setSearchQuery('');
 		}
 		const sort = searchParams.get('sort') as SortOption | null;
-		if (sort && ['featured', 'price-asc', 'price-desc', 'supply-desc'].includes(sort) && sort !== sortOptionRef.current) {
+		if (
+			sort &&
+			['featured', 'price-asc', 'price-desc', 'supply-desc'].includes(
+				sort
+			) &&
+			sort !== sortOptionRef.current
+		) {
 			setSortOption(sort);
 		} else if (sort === null && sortOptionRef.current !== 'featured') {
 			setSortOption('featured');
@@ -648,17 +661,19 @@ function LandingPage() {
 
 	const heldKeyPositions = useMemo(
 		() =>
-			creators.map((creator, index) => ({
-				creatorId: creator.id,
-				quantity:
-					index === 0
-						? featuredHoldings
-						: (DEMO_HELD_KEY_QUANTITIES[index] ?? 0),
-				priceStroops: creator.priceStroops,
-				price: creator.price,
-				isPriceLoading: isPriceRefreshing,
-				isPriceStale: creatorsAreStale,
-			})),
+			sortHoldingsByTotalValue(
+				creators.map((creator, index) => ({
+					creatorId: creator.id,
+					quantity:
+						index === 0
+							? featuredHoldings
+							: (DEMO_HELD_KEY_QUANTITIES[index] ?? 0),
+					priceStroops: creator.priceStroops,
+					price: creator.price,
+					isPriceLoading: isPriceRefreshing,
+					isPriceStale: creatorsAreStale,
+				}))
+			),
 		[creators, creatorsAreStale, featuredHoldings, isPriceRefreshing]
 	);
 	const portfolioValue = useMemo(
@@ -831,7 +846,10 @@ function LandingPage() {
 								<span className="font-semibold uppercase tracking-[0.16em] text-white/40">
 									Shortcut
 								</span>
-								<span className="inline-flex items-center gap-1" aria-hidden="true">
+								<span
+									className="inline-flex items-center gap-1"
+									aria-hidden="true"
+								>
 									<Kbd className="border border-white/10 bg-white/10 text-white/70">
 										Ctrl/Cmd
 									</Kbd>
@@ -930,14 +948,20 @@ function LandingPage() {
 													>
 														<CreatorCard
 															creator={creator}
-															isPriceRefreshing={isPriceRefreshing}
+															isPriceRefreshing={
+																isPriceRefreshing
+															}
 														/>
 													</motion.div>
 												))}
 
 											{/* Separator between pinned and unpinned */}
-											{pagedCreators.some(creator => creator.isPinned) &&
-												pagedCreators.some(creator => !creator.isPinned) && (
+											{pagedCreators.some(
+												creator => creator.isPinned
+											) &&
+												pagedCreators.some(
+													creator => !creator.isPinned
+												) && (
 													<CreatorListGroupSeparator label="Other creators" />
 												)}
 
@@ -958,7 +982,9 @@ function LandingPage() {
 													>
 														<CreatorCard
 															creator={creator}
-															isPriceRefreshing={isPriceRefreshing}
+															isPriceRefreshing={
+																isPriceRefreshing
+															}
 														/>
 													</motion.div>
 												))}
