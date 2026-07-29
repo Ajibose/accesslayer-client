@@ -11,11 +11,12 @@ import {
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
 import { formatNumber } from '@/utils/numberFormat.utils';
-import { formatDisplayKeyPrice } from '@/utils/keyPriceDisplay.utils';
+import { formatDisplayKeyPrice, estimateSellProceeds } from '@/utils/keyPriceDisplay.utils';
 import PercentageBadge from '@/components/common/PercentageBadge';
 import NetworkFeeHint from '@/components/common/NetworkFeeHint';
 import { TRADE_FEE_ESTIMATE } from '@/constants/fees';
 import { formatTransactionFeeDisplay } from '@/utils/transactionFee.utils';
+import { clampBuyQuantity } from '@/utils/buyQuantity';
 
 export type TradeSide = 'buy' | 'sell';
 
@@ -26,6 +27,8 @@ export interface TradeDialogProps {
 	availableHoldings: number;
 	/** Per-key price in stroops, shown on the buy confirmation step. */
 	keyPriceStroops?: number | null;
+	/** Current key supply for estimating sell proceeds. */
+	currentSupply?: number | null;
 	onOpenChange: (open: boolean) => void;
 	onConfirm: (amount: number) => Promise<void> | void;
 	isSubmitting?: boolean;
@@ -37,6 +40,7 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 	creatorName,
 	availableHoldings,
 	keyPriceStroops,
+	currentSupply,
 	onOpenChange,
 	onConfirm,
 	isSubmitting = false,
@@ -44,13 +48,35 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 	const [amountText, setAmountText] = useState('1');
 	const [touched, setTouched] = useState(false);
 	const amountInputRef = useRef<HTMLInputElement | null>(null);
+	const pricePreviewFailureLogged = useRef(false);
+	// TradeDialog is opened via `open`/`onOpenChange` props from several
+	// different external trigger buttons (see LandingPage.tsx), never via
+	// Radix's own <DialogTrigger>. That means Radix's built-in
+	// focus-return-to-trigger (which targets its own internal triggerRef)
+	// is always a no-op here — there is no triggerRef to return to. We
+	// capture whatever had focus right before the dialog opened ourselves
+	// and restore it in onCloseAutoFocus instead.
+	const triggerElementRef = useRef<HTMLElement | null>(null);
 
 	useEffect(() => {
 		if (open) {
+			triggerElementRef.current = document.activeElement as HTMLElement | null;
 			setAmountText('1');
 			setTouched(false);
+			pricePreviewFailureLogged.current = false;
 		}
 	}, [open]);
+
+	const handleBlur = () => {
+		setTouched(true);
+		const normalized = amountText.trim();
+		if (normalized) {
+			const clampedResult = clampBuyQuantity(amountText);
+			if (clampedResult.adjusted) {
+				setAmountText(clampedResult.value.toString());
+			}
+		}
+	};
 
 	const parsedAmount = useMemo(() => {
 		const normalized = amountText.trim();
@@ -78,6 +104,45 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 		{ unit: TRADE_FEE_ESTIMATE.UNIT }
 	);
 
+	const estimatedProceedsStroops = useMemo(() => {
+		if (side !== 'sell' || !Number.isFinite(parsedAmount) || parsedAmount <= 0) {
+			return null;
+		}
+		return estimateSellProceeds(keyPriceStroops, currentSupply, parsedAmount);
+	}, [side, keyPriceStroops, currentSupply, parsedAmount]);
+
+	useEffect(() => {
+		if (process.env.NODE_ENV === 'test') return;
+		if (!open || pricePreviewFailureLogged.current) return;
+
+		if (side === 'buy' && keyPriceStroops == null) {
+			console.debug('[price-preview-failure]', {
+				creator_name: creatorName,
+				quantity: Number.isFinite(parsedAmount) ? parsedAmount : null,
+				side: 'buy',
+				reason: 'key_price_missing',
+				timestamp: new Date().toISOString(),
+			});
+			pricePreviewFailureLogged.current = true;
+		}
+	}, [open, side, keyPriceStroops, creatorName, parsedAmount]);
+
+	useEffect(() => {
+		if (process.env.NODE_ENV === 'test') return;
+		if (!open || pricePreviewFailureLogged.current) return;
+
+		if (side === 'sell' && estimatedProceedsStroops == null) {
+			console.debug('[price-preview-failure]', {
+				creator_name: creatorName,
+				quantity: Number.isFinite(parsedAmount) ? parsedAmount : null,
+				side: 'sell',
+				reason: 'estimate_unavailable',
+				timestamp: new Date().toISOString(),
+			});
+			pricePreviewFailureLogged.current = true;
+		}
+	}, [open, side, estimatedProceedsStroops, creatorName, parsedAmount]);
+
 	return (
 		<Dialog
 			open={open}
@@ -90,6 +155,10 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 				onOpenAutoFocus={event => {
 					event.preventDefault();
 					amountInputRef.current?.focus();
+				}}
+				onCloseAutoFocus={event => {
+					event.preventDefault();
+					triggerElementRef.current?.focus();
 				}}
 				onEscapeKeyDown={event => {
 					if (isSubmitting) event.preventDefault();
@@ -126,7 +195,7 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 							setAmountText(event.target.value);
 							setTouched(true);
 						}}
-						onBlur={() => setTouched(true)}
+						onBlur={handleBlur}
 						disabled={isSubmitting}
 						className={cn(
 							'w-full rounded-xl border bg-white/[0.04] px-3 py-2 text-white outline-none transition-colors',
@@ -176,6 +245,20 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 							fee={estimatedNetworkFee}
 							className="text-white/45"
 						/>
+					)}
+					{side === 'sell' && (
+						<div className="text-xs text-white/45 mt-2">
+							{estimatedProceedsStroops != null ? (
+								<>
+									Estimated proceeds (approximate):{' '}
+									<span className="font-semibold text-amber-300/90 tabular-nums">
+										{formatDisplayKeyPrice(estimatedProceedsStroops)}
+									</span>
+								</>
+							) : (
+								<>Estimated proceeds unavailable</>
+							)}
+						</div>
 					)}
 				</div>
 

@@ -9,6 +9,7 @@ export interface HeldKeyPosition extends CreatorKeyPriceFields {
 	quantity: number | null | undefined;
 	isPriceLoading?: boolean;
 	isPriceStale?: boolean;
+	pending?: boolean;
 }
 
 export type PortfolioValueStatus = 'ready' | 'loading' | 'unavailable';
