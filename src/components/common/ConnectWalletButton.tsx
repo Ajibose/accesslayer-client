@@ -2,6 +2,16 @@ import { useEffect, useRef, useState } from 'react';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
 import { Copy, Check } from 'lucide-react';
 import {
+	Dialog,
+	DialogClose,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from '@/components/ui/dialog';
+import { Button } from '@/components/ui/button';
+import {
 	Popover,
 	PopoverContent,
 	PopoverTrigger,
@@ -21,6 +31,7 @@ function ConnectWalletButton() {
 	const [showAddressPopover, setShowAddressPopover] = useState(false);
 	const [copied, setCopied] = useState(false);
 	const connectedAtRef = useRef<number | null>(null);
+	const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
 	const { address, isConnected } = useAccount();
 	const { connect, connectors, error, isPending } = useConnect();
 	const { disconnect } = useDisconnect();
@@ -74,41 +85,45 @@ function ConnectWalletButton() {
 								{shortenAddress(address)}
 							</button>
 						</PopoverTrigger>
-						<PopoverContent className="w-80">
-							<div className="space-y-3">
-								<div className="space-y-1">
-									<p className="text-xs font-medium text-muted-foreground">
-										Wallet address
-									</p>
-									<p className="break-all font-mono text-sm">{address}</p>
+						<PopoverContent align="end" className="w-80">
+							<div className="flex flex-col gap-3">
+								<div className="flex items-center justify-between">
+									<span className="text-sm font-medium text-gray-900">
+										Connected Wallet
+									</span>
+									<button
+										type="button"
+										onClick={() => setShowAddressPopover(false)}
+										className="text-gray-400 hover:text-gray-600"
+									>
+										×
+									</button>
 								</div>
-								<div className="flex items-center gap-2">
+								<div className="rounded-md bg-gray-100 p-3">
+									<p className="font-mono text-xs break-all text-gray-700">
+										{address}
+									</p>
+								</div>
+								<div className="flex gap-2">
 									<button
 										type="button"
 										onClick={handleCopyAddress}
-										className="inline-flex items-center gap-1.5 rounded-md bg-blue-600 px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-blue-700"
+										className="flex flex-1 items-center justify-center gap-2 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
 									>
 										{copied ? (
-											<Check className="size-3.5" aria-hidden="true" />
+											<Check className="size-4 text-emerald-500" />
 										) : (
-											<Copy className="size-3.5" aria-hidden="true" />
+											<Copy className="size-4" />
 										)}
-										{copied ? 'Copied' : 'Copy address'}
+										{copied ? 'Copied!' : 'Copy Address'}
 									</button>
 									<button
 										type="button"
 										onClick={() => {
-											if (connectedAtRef.current != null) {
-												logWalletDisconnectSession(
-													address,
-													connectedAtRef.current
-												);
-											}
-											disconnect();
-											connectedAtRef.current = null;
 											setShowAddressPopover(false);
+											setShowDisconnectDialog(true);
 										}}
-										className="rounded-md px-3 py-1.5 text-xs font-medium text-red-600 transition-colors hover:bg-red-50"
+										className="flex-1 rounded-md border border-red-200 bg-white px-3 py-2 text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
 									>
 										Disconnect
 									</button>
@@ -117,6 +132,42 @@ function ConnectWalletButton() {
 						</PopoverContent>
 					</Popover>
 				</div>
+				<Dialog
+					open={showDisconnectDialog}
+					onOpenChange={setShowDisconnectDialog}
+				>
+					<DialogContent>
+						<DialogHeader>
+							<DialogTitle>Disconnect wallet?</DialogTitle>
+							<DialogDescription>
+								Disconnecting clears your current wallet session and any
+								pending wallet state. You will need to reconnect to
+								continue.
+							</DialogDescription>
+						</DialogHeader>
+						<DialogFooter>
+							<DialogClose asChild>
+								<Button variant="outline">Cancel</Button>
+							</DialogClose>
+							<Button
+								type="button"
+								variant="destructive"
+								onClick={() => {
+									if (connectedAtRef.current != null) {
+										logWalletDisconnectSession(
+											address,
+											connectedAtRef.current
+										);
+									}
+									disconnect();
+									setShowDisconnectDialog(false);
+								}}
+							>
+								Disconnect
+							</Button>
+						</DialogFooter>
+					</DialogContent>
+				</Dialog>
 				<CopySuccessAnnouncement message={announcement} />
 			</>
 		);
