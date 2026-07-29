@@ -1,7 +1,7 @@
 /**
  * Unit tests for useNavigationTiming — logs TTFB/DCL/load-complete via the
- * Navigation Timing API after each mount of the marketplace and creator
- * profile pages (#693).
+ * Navigation Timing API after each mount of the marketplace, creator
+ * profile, and portfolio pages (#693, #726).
  */
 import { renderHook } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -253,6 +253,13 @@ describe('useNavigationTiming (#678) — page-load-perf log acceptance criteria'
 		expect(infoSpy).toHaveBeenLastCalledWith(
 			'[page-load-perf]',
 			expect.objectContaining({ page_name: 'creator_profile' })
+		);
+
+		// Portfolio route (#726).
+		renderHook(() => useNavigationTiming('portfolio'));
+		expect(infoSpy).toHaveBeenLastCalledWith(
+			'[page-load-perf]',
+			expect.objectContaining({ page_name: 'portfolio' })
 		);
 	});
 

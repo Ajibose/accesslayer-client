@@ -23,7 +23,10 @@ function readNavigationTiming(pageName: string): PageLoadTiming | null {
 
 /**
  * Logs page-load performance (TTFB / DOM Content Loaded / load complete) via
- * the Navigation Timing API after the page becomes interactive (#693).
+ * the Navigation Timing API after the page becomes interactive (#693, #726).
+ *
+ * Used on marketplace, creator profile, and portfolio pages with
+ * `page_name` of `'marketplace'`, `'creator_profile'`, or `'portfolio'`.
  *
  * - Production only (`import.meta.env.PROD`) — never fires in dev/test, so
  *   it can't add noise or overhead to local development.
