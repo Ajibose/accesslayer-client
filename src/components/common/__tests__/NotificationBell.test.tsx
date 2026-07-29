@@ -278,7 +278,6 @@ describe('NotificationBell', () => {
 	// ── Badge decrement ──────────────────────────────────────────────────────
 
 	it('badge count decrements after a notification is marked read', async () => {
-		const user = userEvent.setup();
 		const markAsRead = vi.fn();
 
 		// Start with count = 2
