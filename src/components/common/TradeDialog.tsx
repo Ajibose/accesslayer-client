@@ -49,9 +49,18 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 	const [touched, setTouched] = useState(false);
 	const amountInputRef = useRef<HTMLInputElement | null>(null);
 	const pricePreviewFailureLogged = useRef(false);
+	// TradeDialog is opened via `open`/`onOpenChange` props from several
+	// different external trigger buttons (see LandingPage.tsx), never via
+	// Radix's own <DialogTrigger>. That means Radix's built-in
+	// focus-return-to-trigger (which targets its own internal triggerRef)
+	// is always a no-op here — there is no triggerRef to return to. We
+	// capture whatever had focus right before the dialog opened ourselves
+	// and restore it in onCloseAutoFocus instead.
+	const triggerElementRef = useRef<HTMLElement | null>(null);
 
 	useEffect(() => {
 		if (open) {
+			triggerElementRef.current = document.activeElement as HTMLElement | null;
 			setAmountText('1');
 			setTouched(false);
 			pricePreviewFailureLogged.current = false;
@@ -146,6 +155,10 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 				onOpenAutoFocus={event => {
 					event.preventDefault();
 					amountInputRef.current?.focus();
+				}}
+				onCloseAutoFocus={event => {
+					event.preventDefault();
+					triggerElementRef.current?.focus();
 				}}
 				onEscapeKeyDown={event => {
 					if (isSubmitting) event.preventDefault();

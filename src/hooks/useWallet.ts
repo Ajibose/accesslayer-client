@@ -90,12 +90,24 @@ export function useTradeMutation(address: string) {
 			return { previousHoldings };
 		},
 		onError: (error, variables, context) => {
+			const holdingsKey = queryKeys.wallet.holdings(address);
+
 			if (context?.previousHoldings) {
-				queryClient.setQueryData(
-					queryKeys.wallet.holdings(address),
-					context.previousHoldings
-				);
+				queryClient.setQueryData(holdingsKey, context.previousHoldings);
+			} else if (process.env.NODE_ENV !== 'test') {
+				// No snapshot was captured in onMutate (e.g. it threw before
+				// returning), so the rollback above cannot run and the cache
+				// may be left holding the optimistic (unconfirmed) update.
+				console.warn('[optimistic-rollback]', {
+					cache_key: JSON.stringify(holdingsKey),
+					action:
+						(variables as TradeVariables).amount > 0 ? 'buy' : 'sell',
+					creator_id: (variables as TradeVariables).creatorId,
+					reason: 'snapshot_missing',
+					failed_at: new Date().toISOString(),
+				});
 			}
+
 			showToast.error(getSignatureErrorMessage(error));
 
 			// Emit structured log for failed transaction
@@ -136,9 +148,18 @@ export function useTradeMutation(address: string) {
 			);
 		},
 		onSettled: (_data, _error, variables) => {
-			const invalidatedKeys = [queryKeys.wallet.holdings(address)];
+			// #691 — a completed buy/sell changes supply/price data backing the
+			// marketplace list, so its cache must not wait out the 60s
+			// staleTime; invalidate immediately regardless of the trade outcome.
+			const invalidatedKeys = [
+				queryKeys.wallet.holdings(address),
+				queryKeys.creators.all,
+			];
 			queryClient.invalidateQueries({
 				queryKey: queryKeys.wallet.holdings(address),
+			});
+			queryClient.invalidateQueries({
+				queryKey: queryKeys.creators.all,
 			});
 
 			if (process.env.NODE_ENV !== 'test') {

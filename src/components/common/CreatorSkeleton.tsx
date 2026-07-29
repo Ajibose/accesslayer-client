@@ -129,13 +129,15 @@ export const CreatorProfileHeaderSkeleton: React.FC<{
 export const CreatorHoldingsSkeleton: React.FC<{
 	className?: string;
 	disableShimmer?: boolean;
-}> = ({ className, disableShimmer = false }) => {
+	'data-testid'?: string;
+}> = ({ className, disableShimmer = false, ...rest }) => {
 	const blockClass = disableShimmer
 		? skeletonStaticBlockClass
 		: skeletonBlockClass;
 
 	return (
 		<div
+			{...rest}
 			className={cn(
 				'rounded-2xl border border-white/10 bg-white/[0.03] p-4',
 				className
@@ -150,6 +152,11 @@ export const CreatorHoldingsSkeleton: React.FC<{
 /**
  * A grid of creator holdings skeletons to be shown while the portfolio is
  * loading. Matches the 3-column responsive grid used for the live list.
+ *
+ * Exposes `role="status"` with an `sr-only` label so screen-reader users know
+ * the holdings list is loading (consistent with `CreatorProfileHeaderSkeleton`),
+ * and a `data-testid` so tests can assert the skeleton is in flight and count
+ * its placeholders.
  */
 export const CreatorHoldingsListSkeleton: React.FC<{
 	count?: number;
@@ -157,9 +164,19 @@ export const CreatorHoldingsListSkeleton: React.FC<{
 	className?: string;
 }> = ({ count = 3, disableShimmer = false, className }) => {
 	return (
-		<div className={cn('grid gap-3 sm:grid-cols-2 lg:grid-cols-3', className)}>
+		<div
+			role="status"
+			aria-label="Loading holdings"
+			data-testid="holdings-list-skeleton"
+			className={cn('grid gap-3 sm:grid-cols-2 lg:grid-cols-3', className)}
+		>
+			<span className="sr-only">Loading holdings</span>
 			{Array.from({ length: count }).map((_, i) => (
-				<CreatorHoldingsSkeleton key={i} disableShimmer={disableShimmer} />
+				<CreatorHoldingsSkeleton
+					key={i}
+					disableShimmer={disableShimmer}
+					data-testid="holdings-skeleton-item"
+				/>
 			))}
 		</div>
 	);
