@@ -1,6 +1,6 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
-import toast from 'react-hot-toast';
+import toast, { type Toast } from 'react-hot-toast';
 import showToast from '@/utils/toast.util';
 
 // Mock react-hot-toast
@@ -57,8 +57,8 @@ describe('showToast.transactionSuccess', () => {
 		const mockToastState = { visible: true, id: '1' };
 
 		// Render the toast component
-		const { container } = render(
-			<div>{toastComponent(mockToastState as any)}</div>
+		render(
+			<div>{toastComponent(mockToastState as Toast)}</div>
 		);
 
 		// Check that the title is rendered
@@ -93,7 +93,7 @@ describe('showToast.transactionSuccess', () => {
 		const [toastComponent] = vi.mocked(toast.custom).mock.calls[0];
 		const mockToastState = { visible: true, id: '1' };
 
-		render(<div>{toastComponent(mockToastState as any)}</div>);
+		render(<div>{toastComponent(mockToastState as Toast)}</div>);
 
 		// The TransactionHashRow will display the full hash somewhere (likely in a copy field)
 		// We can't easily test the internal CopyField behavior without more mocking,
@@ -130,7 +130,7 @@ describe('showToast.transactionSuccess', () => {
 		const [toastComponent] = vi.mocked(toast.custom).mock.calls[0];
 		const mockToastState = { visible: true, id: '1' };
 
-		render(<div>{toastComponent(mockToastState as any)}</div>);
+		render(<div>{toastComponent(mockToastState as Toast)}</div>);
 
 		expect(screen.getByText('Transaction confirmed')).toBeInTheDocument();
 		// No "View on Stellar Expert" link should be shown
@@ -169,7 +169,7 @@ describe('showToast.transactionSuccess', () => {
 		const [toastComponent] = vi.mocked(toast.custom).mock.calls[0];
 		const mockToastState = { visible: true, id: '1' };
 
-		render(<div>{toastComponent(mockToastState as any)}</div>);
+		render(<div>{toastComponent(mockToastState as Toast)}</div>);
 
 		const explorerLink = screen.getByText('View on Stellar Expert');
 		expect(explorerLink.closest('a')).toHaveAttribute('href', explorerUrl);

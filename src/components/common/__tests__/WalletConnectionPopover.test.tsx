@@ -1,4 +1,4 @@
-import { render, screen, within } from '@testing-library/react';
+import { render, screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi, beforeEach } from 'vitest';
 import WalletConnectionPopover from '@/components/common/WalletConnectionPopover';
@@ -33,7 +33,7 @@ function setupDisconnected() {
 	mockUseConnect.mockReturnValue({
 		connect: vi.fn(),
 		connectAsync: vi.fn(),
-		connectors: [{ id: 'mock', name: 'Mock Wallet' }] as any,
+		connectors: [{ id: 'mock', name: 'Mock Wallet' }] as ReturnType<typeof useConnect>['connectors'],
 		error: null,
 		isPending: false,
 		variables: undefined,
@@ -157,7 +157,7 @@ describe('WalletConnectionPopover — disconnected state', () => {
 		mockUseConnect.mockReturnValue({
 			connect: mockConnect,
 			connectAsync: vi.fn(),
-			connectors: [fakeConnector] as any,
+			connectors: [fakeConnector] as ReturnType<typeof useConnect>['connectors'],
 			error: null,
 			isPending: false,
 			variables: undefined,

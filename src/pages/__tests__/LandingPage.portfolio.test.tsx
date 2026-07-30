@@ -1,3 +1,4 @@
+import React from 'react';
 import { render, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it, vi, beforeEach, afterEach } from 'vitest';
@@ -15,12 +16,12 @@ vi.mock('@/services/course.service', () => ({
 // Mock framer-motion to avoid animation complexity in tests
 vi.mock('framer-motion', () => ({
 	motion: {
-		div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
-		button: ({ children, ...props }: any) => (
+		div: ({ children, ...props }: React.HTMLAttributes<HTMLDivElement>) => <div {...props}>{children}</div>,
+		button: ({ children, ...props }: React.ButtonHTMLAttributes<HTMLButtonElement>) => (
 			<button {...props}>{children}</button>
 		),
 	},
-	AnimatePresence: ({ children }: any) => children,
+	AnimatePresence: ({ children }: React.PropsWithChildren) => children,
 }));
 
 // Mock GSAP to avoid animation errors
