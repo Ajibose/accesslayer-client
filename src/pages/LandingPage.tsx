@@ -35,6 +35,7 @@ import CreatorProfileErrorState from '@/components/common/CreatorProfileErrorSta
 import TransactionRetryNotice from '@/components/common/TransactionRetryNotice';
 import EmptyTransactionTimelineState from '@/components/common/EmptyTransactionTimelineState';
 import TradeDialog, { type TradeSide } from '@/components/common/TradeDialog';
+import TradePanelErrorBoundary from '@/components/common/TradePanelErrorBoundary';
 import NetworkMismatchBanner from '@/components/common/NetworkMismatchBanner';
 import StellarConnectionQualityBadge from '@/components/common/StellarConnectionQualityBadge';
 import { useAccount } from 'wagmi';
@@ -67,11 +68,6 @@ import {
 	formatPortfolioValueDisplay,
 	getPortfolioValueHelperText,
 } from '@/utils/portfolioValue.utils';
-import {
-	buildStellarExpertTxUrl,
-	truncateTxHash,
-} from '@/constants/stellar';
-import { env } from '@/utils/env.utils';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useNavigationTiming } from '@/hooks/useNavigationTiming';
 import { CREATOR_LIST_SORT_LAYOUT_TRANSITION } from '@/utils/creatorListSortTransition';
@@ -840,22 +836,6 @@ function LandingPage() {
 
 	const handleConfirmTrade = async (amount: number) => {
 		setTradeSubmitting(true);
-
-			// Simulated transaction hash — replace with the real hash once the
-			// on-chain mutation is wired up.
-			const txHash =
-				'0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890';
-			const explorerUrl = buildStellarExpertTxUrl(
-				txHash,
-				env.VITE_STELLAR_NETWORK
-			);
-
-			showToast.transactionSuccess(
-				'Transaction confirmed',
-				truncateTxHash(txHash),
-				txHash,
-				explorerUrl
-			);
 		try {
 			if (tradeSide === 'buy') {
 				showToast.loading(
@@ -868,6 +848,10 @@ function LandingPage() {
 					price: featuredCreator?.price,
 				});
 				setFeaturedHoldings(current => current + amount);
+				showToast.transactionSuccess(
+					'Trade confirmed',
+					`Bought ${formatNumber(amount)} key${amount === 1 ? '' : 's'} from ${FEATURED_CREATOR_NAME}`
+				);
 			} else {
 				showToast.loading(
 					`Submitting sell for ${amount} key${amount === 1 ? '' : 's'}...`
@@ -1796,16 +1780,18 @@ function LandingPage() {
 				</main>
 			</div>
 
-			<TradeDialog
-				open={tradeDialogOpen}
-				side={tradeSide}
-				creatorName={FEATURED_CREATOR_NAME}
-				availableHoldings={featuredHoldings}
-				keyPriceStroops={resolveCreatorKeyPriceStroops(featuredCreator)}
-				isSubmitting={tradeSubmitting}
-				onOpenChange={setTradeDialogOpen}
-				onConfirm={handleConfirmTrade}
-			/>
+			<TradePanelErrorBoundary>
+				<TradeDialog
+					open={tradeDialogOpen}
+					side={tradeSide}
+					creatorName={FEATURED_CREATOR_NAME}
+					availableHoldings={featuredHoldings}
+					keyPriceStroops={resolveCreatorKeyPriceStroops(featuredCreator)}
+					isSubmitting={tradeSubmitting}
+					onOpenChange={setTradeDialogOpen}
+					onConfirm={handleConfirmTrade}
+				/>
+			</TradePanelErrorBoundary>
 			<ScrollToTop />
 			<IdleRefreshPrompt
 				visible={isIdlePromptVisible}
