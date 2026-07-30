@@ -6,15 +6,14 @@
  * profile queries with `queryClient.invalidateQueries({ queryKey:
  * queryKeys.creatorProfile.all() })`).
  */
+
+import type { GetCoursesParams } from '@/services/course.service';
+
 export const queryKeys = {
 	creatorProfile: {
 		all: () => ['creatorProfile'] as const,
 		byId: (creatorId: string) => ['creatorProfile', creatorId] as const,
 	},
-} as const;
-import type { GetCoursesParams } from '@/services/course.service';
-
-export const queryKeys = {
 	creators: {
 		all: ['creators'] as const,
 		list: (params?: GetCoursesParams) =>
@@ -29,4 +28,4 @@ export const queryKeys = {
 		holdings: (address: string) => ['wallet', address, 'holdings'] as const,
 		activity: (address: string) => ['wallet', address, 'activity'] as const,
 	},
-};
+} as const;
