@@ -67,6 +67,11 @@ import {
 	formatPortfolioValueDisplay,
 	getPortfolioValueHelperText,
 } from '@/utils/portfolioValue.utils';
+import {
+	buildStellarExpertTxUrl,
+	truncateTxHash,
+} from '@/constants/stellar';
+import { env } from '@/utils/env.utils';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useNavigationTiming } from '@/hooks/useNavigationTiming';
 import { CREATOR_LIST_SORT_LAYOUT_TRANSITION } from '@/utils/creatorListSortTransition';
@@ -836,6 +841,21 @@ function LandingPage() {
 	const handleConfirmTrade = async (amount: number) => {
 		setTradeSubmitting(true);
 
+			// Simulated transaction hash — replace with the real hash once the
+			// on-chain mutation is wired up.
+			const txHash =
+				'0xabcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890';
+			const explorerUrl = buildStellarExpertTxUrl(
+				txHash,
+				env.VITE_STELLAR_NETWORK
+			);
+
+			showToast.transactionSuccess(
+				'Transaction confirmed',
+				truncateTxHash(txHash),
+				txHash,
+				explorerUrl
+			);
 		try {
 			if (tradeSide === 'buy') {
 				showToast.loading(
