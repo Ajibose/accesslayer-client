@@ -142,10 +142,6 @@ export function useTradeMutation(address: string) {
 							: h
 					)
 			);
-			showToast.transactionSuccess(
-				'Trade confirmed',
-				`Holdings refreshed: +${variables.amount} keys.`
-			);
 		},
 		onSettled: (_data, _error, variables) => {
 			// #691 — a completed buy/sell changes supply/price data backing the

@@ -2,7 +2,7 @@ import toast from 'react-hot-toast';
 import type { ToastOptions } from 'react-hot-toast';
 import TransactionHashRow from '@/components/common/TransactionHashRow';
 
-const TRANSACTION_TOAST_DURATION_MS = 6_000;
+const TRANSACTION_TOAST_DURATION_MS = 4_000;
 
 const showToast = {
 	message: (message: string, options?: ToastOptions) => {
@@ -11,7 +11,7 @@ const showToast = {
 	},
 	success: (message: string, options?: ToastOptions) => {
 		toast.remove();
-		toast.success(message, options);
+		toast.success(message, { duration: TRANSACTION_TOAST_DURATION_MS, ...options });
 	},
 	error: (message: string, options?: ToastOptions) => {
 		toast.remove();
