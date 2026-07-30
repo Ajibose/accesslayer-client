@@ -1,4 +1,4 @@
-import React from 'react';
+import type { ReactNode } from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { BondingCurveChart, type BondingCurveDataPoint } from '../BondingCurveChart';
@@ -15,7 +15,7 @@ vi.mock('recharts', async (importOriginal) => {
 				width,
 				height,
 			}: {
-				children?: React.ReactNode;
+				children?: ReactNode;
 				width?: string | number;
 				height?: string | number;
 			}) => (
@@ -30,7 +30,7 @@ vi.mock('recharts', async (importOriginal) => {
 				data,
 				'data-testid': testId,
 			}: {
-				children?: React.ReactNode;
+				children?: ReactNode;
 				data?: unknown;
 				'data-testid'?: string;
 			}) => (
