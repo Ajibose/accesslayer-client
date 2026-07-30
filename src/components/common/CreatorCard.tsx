@@ -165,10 +165,6 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 				truncateTxHash(mockTxHash),
 				mockTxHash,
 				explorerUrl
-				'Purchase Successful!',
-				`Bought 1 key from ${displayCreatorName}`,
-				'0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
-				'https://stellar.expert/explorer/testnet/tx/0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
 			);
 
 			window.setTimeout(() => {
