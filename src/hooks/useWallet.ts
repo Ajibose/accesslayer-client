@@ -65,11 +65,17 @@ export function useTradeMutation(address: string) {
 			queryClient.setQueryData<HeldKeyPosition[]>(queryKey, (old = []) => {
 				const existing = old.find(h => h.creatorId === creatorId);
 				if (existing) {
+					const nextQuantity = (existing.quantity ?? 0) + amount;
+
+					if (nextQuantity <= 0) {
+						return old.filter(h => h.creatorId !== creatorId);
+					}
+
 					return old.map(h =>
 						h.creatorId === creatorId
 							? {
 									...h,
-									quantity: (h.quantity ?? 0) + amount,
+									quantity: nextQuantity,
 									pending: true,
 								}
 							: h
