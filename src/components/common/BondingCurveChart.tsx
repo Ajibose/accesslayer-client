@@ -20,8 +20,8 @@ export interface BondingCurveChartProps {
 	data?: BondingCurveDataPoint[];
 	currentSupply?: number;
 	className?: string;
-	width?: number | string;
-	height?: number | string;
+	width?: number | `${number}%`;
+	height?: number | `${number}%`;
 }
 
 export function BondingCurveChart({
@@ -120,8 +120,8 @@ interface CustomDotProps {
 							borderRadius: '0.5rem',
 							color: '#f5f5f5',
 						}}
-						formatter={(value: number) => [`${value} XLM`, 'Price']}
-						labelFormatter={(label: number) => `Key Supply: ${label}`}
+						formatter={(value: unknown) => [`${value} XLM`, 'Price']}
+						labelFormatter={(label: unknown) => `Key Supply: ${label}`}
 					/>
 					<Line
 						type="monotone"
