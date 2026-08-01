@@ -275,4 +275,28 @@ describe('LandingPage sell flow end-to-end (#644)', () => {
 			{ timeout: 5000 }
 		);
 	}, 15000);
+
+	it('is keyboard accessible end-to-end (#722): focuses the amount input on open, closes on Escape, and returns focus to the Sell button', async () => {
+		renderLandingPage();
+		await screen.findByText('3 keys · 0.05 XLM');
+
+		const [sellButton] = screen.getAllByRole('button', {
+			name: 'Sell',
+			hidden: true,
+		});
+		sellButton.focus();
+		fireEvent.click(sellButton);
+
+		await waitFor(() => {
+			expect(screen.getByTestId('trade-dialog-amount')).toHaveFocus();
+		});
+
+		fireEvent.keyDown(document.activeElement as Element, { key: 'Escape' });
+
+		await waitFor(() => {
+			expect(sellButton).toHaveFocus();
+		});
+
+		expect(screen.queryByTestId('trade-dialog-amount')).not.toBeInTheDocument();
+	}, 15000);
 });
