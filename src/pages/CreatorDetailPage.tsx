@@ -6,6 +6,7 @@ import CreatorProfileInfoGrid from '@/components/common/CreatorProfileInfoGrid';
 import CreatorActivityFeed from '@/components/common/CreatorActivityFeed';
 import { CreatorProfileHeaderSkeleton } from '@/components/common/CreatorSkeleton';
 import { bpsToPercent } from '@/utils/numberFormat.utils';
+import { resolveCreatorKeyPriceStroops } from '@/utils/keyPriceDisplay.utils';
 import CreatorPageErrorBoundary from '@/components/common/CreatorPageErrorBoundary';
 import { ApiError } from '@/services/api.service';
 import { useNavigationTiming } from '@/hooks/useNavigationTiming';
@@ -61,6 +62,7 @@ function CreatorDetailPageContent() {
 					isVerified={creator.isVerified}
 					avatarUrl={creator.thumbnail}
 					bio={creator.description}
+					priceStroops={resolveCreatorKeyPriceStroops(creator)}
 				/>
 				<div className="mt-8 rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 shadow-2xl backdrop-blur-md md:p-8">
 					<h2 className="font-grotesque text-xl font-black tracking-tight text-white mb-6">
