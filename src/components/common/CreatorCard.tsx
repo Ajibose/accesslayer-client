@@ -49,6 +49,8 @@ import WalletConnectCalloutBanner from '@/components/common/WalletConnectCallout
 import NetworkMismatchBanner from '@/components/common/NetworkMismatchBanner';
 import CreatorSocialLinksList from '@/components/common/CreatorSocialLinksList';
 import TransactionStatusIcon from '@/components/common/TransactionStatusIcon';
+import { buildStellarExpertTxUrl, truncateTxHash } from '@/constants/stellar';
+import { env } from '@/utils/env.utils';
 import MiniStatChip from '@/components/common/MiniStatChip';
 import Change24hBadge from '@/components/common/Change24hBadge';
 import KeySupplyBadge from '@/components/common/KeySupplyBadge';
@@ -149,11 +151,21 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 				creatorId: creator.id,
 				creatorTitle: displayCreatorName,
 			});
+
+			// Simulated transaction hash — replace with the real hash once the
+			// on-chain mutation is wired up.
+			const mockTxHash =
+				'0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
+			const explorerUrl = buildStellarExpertTxUrl(
+				mockTxHash,
+				env.VITE_STELLAR_NETWORK
+			);
+
 			showToast.transactionSuccess(
-				'Purchase Successful!',
-				`Bought 1 key from ${displayCreatorName}`,
-				'0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
-				'https://stellar.expert/explorer/testnet/tx/0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
+				'Transaction confirmed',
+				truncateTxHash(mockTxHash),
+				mockTxHash,
+				explorerUrl
 			);
 
 			window.setTimeout(() => {
