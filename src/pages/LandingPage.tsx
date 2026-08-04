@@ -35,8 +35,10 @@ import CreatorProfileErrorState from '@/components/common/CreatorProfileErrorSta
 import TransactionRetryNotice from '@/components/common/TransactionRetryNotice';
 import EmptyTransactionTimelineState from '@/components/common/EmptyTransactionTimelineState';
 import TradeDialog, { type TradeSide } from '@/components/common/TradeDialog';
+import TradePanelErrorBoundary from '@/components/common/TradePanelErrorBoundary';
 import NetworkMismatchBanner from '@/components/common/NetworkMismatchBanner';
 import StellarConnectionQualityBadge from '@/components/common/StellarConnectionQualityBadge';
+import { useAccount } from 'wagmi';
 import { useNetworkMismatch } from '@/hooks/useNetworkMismatch';
 import { useTradeMutation, useWalletHoldings } from '@/hooks/useWallet';
 import showToast from '@/utils/toast.util';
@@ -236,7 +238,7 @@ const toPriceFilterValue = (value: string) => {
 };
 
 const getCreatorListKey = (creator: Course) =>
-	creatorListKey(Number(creator.id));
+	creatorListKey(creator.id);
 
 type SortOption = 'featured' | 'price-asc' | 'price-desc' | 'supply-desc';
 type CreatorListMode = 'pagination' | 'infinite';
@@ -752,9 +754,16 @@ function LandingPage() {
 		handleRetryCreatorFetch();
 	};
 
-	const tradeMutation = useTradeMutation(DEMO_WALLET_ADDRESS);
-	const { data: cachedHoldings = [] } = useWalletHoldings(DEMO_WALLET_ADDRESS);
+	const { address: connectedAddress } = useAccount();
+	const activeWalletAddress = connectedAddress || DEMO_WALLET_ADDRESS;
 
+	const tradeMutation = useTradeMutation(activeWalletAddress);
+	const { data: cachedHoldings = [] } = useWalletHoldings(activeWalletAddress);
+
+	// Merged: keep total-value sorting (feature/holdings-sorting-tests) while
+	// also zeroing out the demo baseline quantities once a real wallet is
+	// connected (dev), so a connected wallet only shows genuine cached
+	// holdings rather than the seeded demo amounts.
 	const heldKeyPositions = useMemo(
 		() =>
 			sortHoldingsByTotalValue(
@@ -762,10 +771,11 @@ function LandingPage() {
 					const cached = cachedHoldings.find(
 						h => h.creatorId === creator.id
 					);
-					const baseQuantity =
+					const defaultBaseQuantity =
 						index === 0
 							? featuredHoldings
 							: (DEMO_HELD_KEY_QUANTITIES[index] ?? 0);
+					const baseQuantity = connectedAddress ? 0 : defaultBaseQuantity;
 					return {
 						creatorId: creator.id,
 						quantity: cached?.quantity ?? baseQuantity,
@@ -783,6 +793,7 @@ function LandingPage() {
 			featuredHoldings,
 			isPriceRefreshing,
 			cachedHoldings,
+			connectedAddress,
 		]
 	);
 	const portfolioValue = useMemo(
@@ -841,7 +852,6 @@ function LandingPage() {
 
 	const handleConfirmTrade = async (amount: number) => {
 		setTradeSubmitting(true);
-
 		try {
 			if (tradeSide === 'buy') {
 				showToast.loading(
@@ -854,6 +864,10 @@ function LandingPage() {
 					price: featuredCreator?.price,
 				});
 				setFeaturedHoldings(current => current + amount);
+				showToast.transactionSuccess(
+					'Trade confirmed',
+					`Bought ${formatNumber(amount)} key${amount === 1 ? '' : 's'} from ${FEATURED_CREATOR_NAME}`
+				);
 			} else {
 				showToast.loading(
 					`Submitting sell for ${amount} key${amount === 1 ? '' : 's'}...`
@@ -1782,16 +1796,18 @@ function LandingPage() {
 				</main>
 			</div>
 
-			<TradeDialog
-				open={tradeDialogOpen}
-				side={tradeSide}
-				creatorName={FEATURED_CREATOR_NAME}
-				availableHoldings={featuredHoldings}
-				keyPriceStroops={resolveCreatorKeyPriceStroops(featuredCreator)}
-				isSubmitting={tradeSubmitting}
-				onOpenChange={setTradeDialogOpen}
-				onConfirm={handleConfirmTrade}
-			/>
+			<TradePanelErrorBoundary>
+				<TradeDialog
+					open={tradeDialogOpen}
+					side={tradeSide}
+					creatorName={FEATURED_CREATOR_NAME}
+					availableHoldings={featuredHoldings}
+					keyPriceStroops={resolveCreatorKeyPriceStroops(featuredCreator)}
+					isSubmitting={tradeSubmitting}
+					onOpenChange={setTradeDialogOpen}
+					onConfirm={handleConfirmTrade}
+				/>
+			</TradePanelErrorBoundary>
 			<ScrollToTop />
 			<IdleRefreshPrompt
 				visible={isIdlePromptVisible}
