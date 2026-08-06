@@ -45,6 +45,12 @@ import showToast from '@/utils/toast.util';
 import { getSignatureErrorMessage } from '@/utils/errorHandling.utils';
 import { formatCompactNumber, formatNumber } from '@/utils/numberFormat.utils';
 import { formatOwnershipPercent } from '@/utils/ownership.utils';
+import {
+	calculatePortfolioValue,
+	formatPortfolioValueDisplay,
+	getPortfolioValueHelperText,
+	sortHoldingsByTotalValue,
+} from '@/utils/portfolioValue.utils';
 import PrecisionModeToggle, {
 	type PrecisionMode,
 } from '@/components/common/PrecisionModeToggle';
@@ -63,11 +69,6 @@ import {
 	formatDisplayKeyPrice,
 	resolveCreatorKeyPriceStroops,
 } from '@/utils/keyPriceDisplay.utils';
-import {
-	calculatePortfolioValue,
-	formatPortfolioValueDisplay,
-	getPortfolioValueHelperText,
-} from '@/utils/portfolioValue.utils';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
 import { useNavigationTiming } from '@/hooks/useNavigationTiming';
 import { CREATOR_LIST_SORT_LAYOUT_TRANSITION } from '@/utils/creatorListSortTransition';
@@ -759,26 +760,41 @@ function LandingPage() {
 	const tradeMutation = useTradeMutation(activeWalletAddress);
 	const { data: cachedHoldings = [] } = useWalletHoldings(activeWalletAddress);
 
+	// Merged: keep total-value sorting (feature/holdings-sorting-tests) while
+	// also zeroing out the demo baseline quantities once a real wallet is
+	// connected (dev), so a connected wallet only shows genuine cached
+	// holdings rather than the seeded demo amounts.
 	const heldKeyPositions = useMemo(
 		() =>
-			holdingsCreators.map((creator, index) => {
-				const cached = cachedHoldings.find(h => h.creatorId === creator.id);
-				const defaultBaseQuantity =
-					index === 0
-						? featuredHoldings
-						: (DEMO_HELD_KEY_QUANTITIES[index] ?? 0);
-				const baseQuantity = connectedAddress ? 0 : defaultBaseQuantity;
-				return {
-					creatorId: creator.id,
-					quantity: cached?.quantity ?? baseQuantity,
-					priceStroops: creator.priceStroops,
-					price: creator.price,
-					isPriceLoading: isPriceRefreshing,
-					isPriceStale: creatorsAreStale,
-					pending: cached?.pending ?? false,
-				};
-			}),
-		[holdingsCreators, creatorsAreStale, featuredHoldings, isPriceRefreshing, cachedHoldings, connectedAddress]
+			sortHoldingsByTotalValue(
+				holdingsCreators.map((creator, index) => {
+					const cached = cachedHoldings.find(
+						h => h.creatorId === creator.id
+					);
+					const defaultBaseQuantity =
+						index === 0
+							? featuredHoldings
+							: (DEMO_HELD_KEY_QUANTITIES[index] ?? 0);
+					const baseQuantity = connectedAddress ? 0 : defaultBaseQuantity;
+					return {
+						creatorId: creator.id,
+						quantity: cached?.quantity ?? baseQuantity,
+						priceStroops: creator.priceStroops,
+						price: creator.price,
+						isPriceLoading: isPriceRefreshing,
+						isPriceStale: creatorsAreStale,
+						pending: cached?.pending ?? false,
+					};
+				})
+			),
+		[
+			holdingsCreators,
+			creatorsAreStale,
+			featuredHoldings,
+			isPriceRefreshing,
+			cachedHoldings,
+			connectedAddress,
+		]
 	);
 	const portfolioValue = useMemo(
 		() => calculatePortfolioValue(heldKeyPositions),
