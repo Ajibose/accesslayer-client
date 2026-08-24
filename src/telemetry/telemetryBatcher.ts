@@ -23,16 +23,18 @@ export type OnBeacon = (batch: TelemetryBatch) => void;
  *  - Provide a synchronous flushAndBeacon() path for page-unload delivery.
  */
 export class TelemetryBatcher {
+	private readonly onFlush: OnFlush;
+	private readonly onBeacon: OnBeacon;
 	private pending: EnvelopedEvent[] = [];
 	private retained: EnvelopedEvent[] = [];
 	private lastDeliveredSequence = 0;
 	private flushTimer: ReturnType<typeof setInterval> | null = null;
 	private flushing = false;
 
-	constructor(
-		private readonly onFlush: OnFlush,
-		private readonly onBeacon: OnBeacon,
-	) {}
+	constructor(onFlush: OnFlush, onBeacon: OnBeacon) {
+		this.onFlush = onFlush;
+		this.onBeacon = onBeacon;
+	}
 
 	start(): void {
 		if (this.flushTimer != null) return;
