@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import { Toaster } from 'react-hot-toast';
 import { createBrowserRouter, RouterProvider } from 'react-router';
 import AppErrorBoundary from './components/common/AppErrorBoundary';
+import OfflineBanner from './components/common/OfflineBanner';
 import { routes } from './routes';
 import { useRouteChangeLogging } from './hooks/useRouteChangeLogging';
 
@@ -26,6 +27,7 @@ function App() {
 
 	return (
 		<AppErrorBoundary>
+			<OfflineBanner />
 			<Toaster
 				toastOptions={{
 					ariaProps: {
