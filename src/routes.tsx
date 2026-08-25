@@ -2,6 +2,7 @@ import HomePage from './pages/HomePage';
 import NotFoundPage from './pages/NotFoundPage';
 import CreatorDetailPage from './pages/CreatorDetailPage';
 import NotificationsPage from './pages/NotificationsPage';
+import LeaderboardPage from './pages/LeaderboardPage';
 
 export const routes = [
 	{
@@ -11,6 +12,10 @@ export const routes = [
 	{
 		path: '/creators',
 		element: <HomePage />,
+	},
+	{
+		path: '/leaderboard',
+		element: <LeaderboardPage />,
 	},
 	{
 		path: '/creator/:id',
