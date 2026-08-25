@@ -1,4 +1,7 @@
 import { useEffect, useState } from 'react';
+import WalletStatusChip from '@/components/common/WalletStatusChip';
+import NotificationBell from '@/components/common/NotificationBell';
+import { useProfileStore } from '@/hooks/useProfileStore';
 import { Link } from 'react-router';
 
 const navLinks = [
@@ -9,6 +12,7 @@ const navLinks = [
 
 export default function Header() {
 	const [scrolled, setScrolled] = useState(false);
+	const profile = useProfileStore(state => state.profile);
 
 	useEffect(() => {
 		const onScroll = () => {
@@ -65,17 +69,21 @@ export default function Header() {
 					)}
 				</nav>
 
-				{/* CTA */}
-				<Link
-					to="/connect"
-					className={`rounded-sm px-5 py-2 font-mono text-[10px] uppercase tracking-wider transition-all duration-300 ${
-						scrolled
-							? 'border border-gray-200 bg-gray-50 text-gray-600 hover:border-gray-900 hover:bg-gray-900 hover:text-white'
-							: 'border border-white/15 bg-white/[0.05] text-white/60 hover:border-white/30 hover:bg-white/[0.09] hover:text-white'
-					}`}
-				>
-					Connect Wallet
-				</Link>
+				{/* Right-side actions: notification bell (#720) + wallet status chip (#686).
+				    NotificationBell is only rendered when a user profile is available. */}
+				<div className="flex items-center gap-2">
+					{profile && (
+						<NotificationBell
+							userId={profile.id}
+							className={
+								scrolled
+									? 'text-gray-600 hover:bg-black/5 hover:text-gray-900'
+									: ''
+							}
+						/>
+					)}
+					<WalletStatusChip />
+				</div>
 			</div>
 		</header>
 	);

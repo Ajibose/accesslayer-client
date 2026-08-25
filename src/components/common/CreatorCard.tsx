@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import { useAccount } from 'wagmi';
 import type { Course } from '@/services/course.service';
 import { cn } from '@/lib/utils';
@@ -11,6 +11,8 @@ import {
 	Share2,
 	ExternalLink,
 } from 'lucide-react';
+import { Sparkline } from '@/components/ui/sparkline';
+import SectionErrorBoundary from '@/components/common/SectionErrorBoundary';
 import {
 	DropdownMenu,
 	DropdownMenuContent,
@@ -24,7 +26,10 @@ import toast from 'react-hot-toast';
 import showToast from '@/utils/toast.util';
 import { formatCompactNumber } from '@/utils/numberFormat.utils';
 import { formatCreatorKeyPriceDisplay } from '@/utils/keyPriceDisplay.utils';
-import { formatCreatorHandle } from '@/utils/handleDisplay.utils';
+import {
+	formatCreatorHandle,
+	truncateHandle,
+} from '@/utils/handleDisplay.utils';
 import { normalizeCreatorDisplayName } from '@/utils/creatorDisplayName.utils';
 import { getCreatorPriceChartAccessibilityCopy } from '@/utils/creatorPriceChartAccessibility.utils';
 import { formatJoinDate } from '@/utils/formatJoinDate';
@@ -33,6 +38,7 @@ import { Tooltip } from '@/components/ui/tooltip';
 import { AsyncButton } from '@/components/ui/async-button';
 import { useNetworkMismatch } from '@/hooks/useNetworkMismatch';
 import { useTransactionTelemetry } from '@/hooks/useTransactionTelemetry';
+import { copyTextToClipboard } from '@/utils/clipboard.utils';
 import TransactionRetryNotice from '@/components/common/TransactionRetryNotice';
 import TransactionFailureDrawer from '@/components/common/TransactionFailureDrawer';
 import type { TransactionFailureDetails } from '@/components/common/TransactionFailureDrawer';
@@ -43,6 +49,8 @@ import WalletConnectCalloutBanner from '@/components/common/WalletConnectCallout
 import NetworkMismatchBanner from '@/components/common/NetworkMismatchBanner';
 import CreatorSocialLinksList from '@/components/common/CreatorSocialLinksList';
 import TransactionStatusIcon from '@/components/common/TransactionStatusIcon';
+import { buildStellarExpertTxUrl, truncateTxHash } from '@/constants/stellar';
+import { env } from '@/utils/env.utils';
 import MiniStatChip from '@/components/common/MiniStatChip';
 import Change24hBadge from '@/components/common/Change24hBadge';
 import KeySupplyBadge from '@/components/common/KeySupplyBadge';
@@ -78,6 +86,8 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 	const displayInstructorHandle =
 		formatCreatorHandle(creator.instructorId) || '@creator';
 	const displaySocialHandle = formatCreatorHandle(creator.socialHandle);
+	const truncatedInstructorHandle = truncateHandle(displayInstructorHandle);
+	const truncatedSocialHandle = truncateHandle(displaySocialHandle);
 	const displayCreatorName =
 		normalizeCreatorDisplayName(creator.title) || 'Unnamed creator';
 	const priceChartAccessibility = getCreatorPriceChartAccessibilityCopy({
@@ -100,8 +110,12 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 		});
 	const hasFailedOnceRef = useRef(false);
 	const trackTransactionEvent = useTransactionTelemetry();
+	const cardRef = useRef<HTMLDivElement>(null);
 
-	const runPurchaseAttempt = () => {
+	// Keyboard shortcut for quick buy (press 'b' when card is focused)
+
+
+	const runPurchaseAttempt = useCallback(() => {
 		setTransactionState('submitting');
 		trackTransactionEvent('tx_submitted', {
 			creatorId: creator.id,
@@ -137,43 +151,59 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 				creatorId: creator.id,
 				creatorTitle: displayCreatorName,
 			});
+
+			// Simulated transaction hash — replace with the real hash once the
+			// on-chain mutation is wired up.
+			const mockTxHash =
+				'0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef';
+			const explorerUrl = buildStellarExpertTxUrl(
+				mockTxHash,
+				env.VITE_STELLAR_NETWORK
+			);
+
 			showToast.transactionSuccess(
-				'Purchase Successful!',
-				`You successfully bought a key for ${displayCreatorName}`,
-				'0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef',
-				'https://stellar.expert/explorer/testnet/tx/0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef'
+				'Transaction confirmed',
+				truncateTxHash(mockTxHash),
+				mockTxHash,
+				explorerUrl
 			);
 
 			window.setTimeout(() => {
 				setTransactionState('idle');
 			}, 1800);
 		}, 1500);
-	};
+	}, [creator.id, displayCreatorName, trackTransactionEvent, setTransactionState]);
 
 	const isRecentlyActive = (creator.volume24h ?? 0) > 0;
 	const keyPriceDisplay = formatCreatorKeyPriceDisplay(creator);
 
-	const handleCopyLink = () => {
+	const handleCopyLink = async () => {
 		const url = `${window.location.origin}/creator/${creator.id}`;
-		navigator.clipboard
-			.writeText(url)
-			.then(() => toast.success('Profile link copied'))
-			.catch(() => toast.error('Could not copy link'));
+		try {
+			await copyTextToClipboard(url);
+			toast.success('Profile link copied');
+		} catch {
+			toast.error('Could not copy the profile link. Please copy it manually.');
+		}
 	};
 
-	const handleShare = () => {
+	const handleShare = async () => {
 		const url = `${window.location.origin}/creator/${creator.id}`;
 		if (navigator.share) {
 			navigator.share({ title: displayCreatorName, url }).catch(() => {});
 		} else {
-			navigator.clipboard
-				.writeText(url)
-				.then(() => toast.success('Link copied to clipboard'))
-				.catch(() => toast.error('Could not share'));
+			try {
+				await copyTextToClipboard(url);
+				toast.success('Link copied to clipboard');
+			} catch {
+				toast.error(
+					'Could not copy the share link. Please copy it manually.'
+				);
+			}
 		}
 	};
 
-	const handleBuy = () => {
+	const handleBuy = useCallback(() => {
 		if (!isConnected) {
 			toast.error('Please connect your wallet to purchase keys', {
 				duration: 4000,
@@ -193,12 +223,14 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 		});
 		// Implementation for contract interaction would go here
 		runPurchaseAttempt();
-	};
+	}, [isConnected, isNetworkMismatch, expectedChainName, displayCreatorName, runPurchaseAttempt]);
 
 	return (
 		<div
+			ref={cardRef}
+			tabIndex={0}
 			className={cn(
-				'marketplace-card-surface marketplace-card-surface-hover group relative overflow-hidden rounded-2xl border p-4 transition-all duration-300 focus-within:ring-2 focus-within:ring-amber-400/40 focus-within:ring-offset-2 focus-within:ring-offset-slate-950 motion-reduce:transition-none motion-safe:md:hover:-translate-y-0.5 motion-safe:md:hover:border-amber-500/25 motion-safe:md:hover:shadow-[0_12px_32px_-20px_rgba(251,191,36,0.5)] motion-reduce:md:hover:translate-y-0 motion-reduce:md:hover:border-amber-500/35 motion-reduce:md:hover:bg-white/[0.05] motion-reduce:md:hover:shadow-[0_0_0_1px_rgba(251,191,36,0.12)]',
+				'marketplace-card-surface marketplace-card-surface-hover group relative overflow-hidden rounded-2xl border p-4 transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-amber-400/40 focus-visible:ring-offset-2 focus-visible:ring-offset-slate-950 motion-reduce:transition-none motion-safe:md:hover:-translate-y-0.5 motion-safe:md:hover:border-amber-500/25 motion-safe:md:hover:shadow-[0_12px_32px_-20px_rgba(251,191,36,0.5)] motion-reduce:md:hover:translate-y-0 motion-reduce:md:hover:border-amber-500/35 motion-reduce:md:hover:bg-white/[0.05] motion-reduce:md:hover:shadow-[0_0_0_1px_rgba(251,191,36,0.12)]',
 				className
 			)}
 		>
@@ -300,7 +332,7 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 						creatorShareSupply={creator.creatorShareSupply}
 						isVerified={creator.isVerified}
 					>
-						{displayInstructorHandle}
+						{truncatedInstructorHandle}
 					</CreatorHandleHoverCard>
 				</p>
 
@@ -324,7 +356,7 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 							creatorShareSupply={creator.creatorShareSupply}
 							isVerified={creator.isVerified}
 						>
-							<span className="truncate">{displaySocialHandle}</span>
+							<span className="truncate">{truncatedSocialHandle}</span>
 						</CreatorHandleHoverCard>
 					</div>
 				) : (
@@ -339,32 +371,47 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 					</div>
 				)}
 
-				{/*  Sparkline placeholder */}
-				<div className="mt-3">
-					<div
-						role="img"
-						aria-label={priceChartAccessibility.summary}
-						aria-describedby={priceChartDescriptionId}
-						className="h-10 w-full rounded-lg bg-white/10 animate-pulse"
-					/>
-					<table id={priceChartDescriptionId} className="sr-only">
-						<caption>{priceChartAccessibility.summary}</caption>
-						<thead>
-							<tr>
-								<th scope="col">Point</th>
-								<th scope="col">Key price</th>
-							</tr>
-						</thead>
-						<tbody>
-							{priceChartAccessibility.points.map(point => (
-								<tr key={point.label}>
-									<th scope="row">{point.label}</th>
-									<td>{point.value}</td>
-								</tr>
-							))}
-						</tbody>
-					</table>
-				</div>
+			{/* Price history sparkline */}
+			{creator.priceHistory && creator.priceHistory.length >= 2 && (() => {
+				const latest = creator.priceHistory[creator.priceHistory.length - 1];
+				const earliest = creator.priceHistory[0];
+				let lineColor = '#fbbf24';
+				if (latest > earliest) lineColor = '#22c55e';
+				else if (latest < earliest) lineColor = '#ef4444';
+
+				return (
+					<SectionErrorBoundary
+						sectionName="bonding curve chart"
+						title="Chart unavailable — try refreshing"
+						description=""
+						minHeight={40}
+					>
+						<div className="mt-3">
+							<Sparkline
+								data={creator.priceHistory}
+								color={lineColor}
+							/>
+							<table id={priceChartDescriptionId} className="sr-only">
+								<caption>{priceChartAccessibility.summary}</caption>
+								<thead>
+									<tr>
+										<th scope="col">Point</th>
+										<th scope="col">Key price</th>
+									</tr>
+								</thead>
+								<tbody>
+									{priceChartAccessibility.points.map(point => (
+										<tr key={point.label}>
+											<th scope="row">{point.label}</th>
+											<td>{point.value}</td>
+										</tr>
+									))}
+								</tbody>
+							</table>
+						</div>
+					</SectionErrorBoundary>
+				);
+			})()}
 
 				<div className="mt-3 flex flex-wrap gap-2">
 					<MiniStatChip label="Price" value={keyPriceDisplay} />
@@ -410,7 +457,7 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 						}
 						value={
 							creator.socialHandle
-								? displaySocialHandle
+								? truncatedSocialHandle
 								: 'No public handle'
 						}
 						valueTitle={
@@ -476,7 +523,12 @@ const CreatorCard: React.FC<CreatorCardProps> = ({
 				>
 					Purchase actions for {displayCreatorName}
 				</span>
-				<NetworkFeeHint className="shrink-0" />
+				<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+					<NetworkFeeHint className="shrink-0" />
+					<span className="hidden sm:inline text-xs text-white/40">
+						Press <kbd className="px-1.5 py-0.5 rounded bg-white/10 text-white/60 font-mono">B</kbd> to quick buy
+					</span>
+				</div>
 				<AsyncButton
 					onClick={handleBuy}
 					variant={isConnected ? 'default' : 'outline'}
