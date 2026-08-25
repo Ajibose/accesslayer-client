@@ -3,7 +3,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { LayoutGroup, motion } from 'framer-motion';
 import { useSearchParams } from 'react-router';
-import { courseService, type Course } from '@/services/course.service';
+import { courseService, type Course, type CourseSortOption } from '@/services/course.service';
 import SkipToContent from '@/components/common/SkipToContent';
 import { cn } from '@/lib/utils';
 import SearchBar from '@/components/common/SearchBar';
@@ -239,7 +239,6 @@ const toPriceFilterValue = (value: string) => {
 const getCreatorListKey = (creator: Course) =>
 	creatorListKey(creator.id);
 
-type SortOption = 'volume_desc' | 'price_asc' | 'price_desc' | 'newest';
 type CreatorListMode = 'pagination' | 'infinite';
 
 function LandingPage() {
@@ -271,7 +270,7 @@ function LandingPage() {
 		const category = searchParams.get('category');
 		return category || '';
 	});
-	const sortOptionRef = useRef<SortOption>('volume_desc');
+	const sortOptionRef = useRef<CourseSortOption>('volume_desc');
 	const PROFILE_TABS = ['overview', 'creations', 'collectors', 'activity'];
 	const [activeProfileTab, setActiveProfileTab] = useState(() => {
 		if (typeof window === 'undefined') return 'overview';
@@ -285,8 +284,8 @@ function LandingPage() {
 	const [tradeSubmitting, setTradeSubmitting] = useState(false);
 	const [stellarAddressCopied, setStellarAddressCopied] = useState(false);
 	const prefersReducedMotion = usePrefersReducedMotion();
-	const [sortOption, setSortOption] = useState<SortOption>(() => {
-		const sort = searchParams.get('sort') as SortOption | null;
+	const [sortOption, setSortOption] = useState<CourseSortOption>(() => {
+		const sort = searchParams.get('sort') as CourseSortOption | null;
 		if (
 			sort &&
 			['volume_desc', 'price_asc', 'price_desc', 'newest'].includes(sort)
@@ -398,10 +397,10 @@ function LandingPage() {
 		if (searchVal !== searchQueryRef.current) {
 			setSearchQuery(searchVal);
 		}
-		const sort = searchParams.get('sort') as SortOption | null;
-		const validSort: SortOption =
+		const sort = searchParams.get('sort') as CourseSortOption | null;
+		const validSort: CourseSortOption =
 			sort && ['volume_desc', 'price_asc', 'price_desc', 'newest'].includes(sort)
-				? (sort as SortOption)
+				? (sort as CourseSortOption)
 				: 'volume_desc';
 		if (validSort !== sortOptionRef.current) {
 			sortOptionRef.current = validSort;
@@ -1005,7 +1004,7 @@ function LandingPage() {
 									id="creator-sort"
 									value={sortOption}
 									onChange={e =>
-										setSortOption(e.target.value as SortOption)
+										setSortOption(e.target.value as CourseSortOption)
 									}
 									className="h-9 rounded-lg border border-white/15 bg-slate-950/80 px-3 text-sm text-white outline-none focus:border-amber-400/60"
 								>
