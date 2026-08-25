@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useAccount, useConnect, useDisconnect } from 'wagmi';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, Loader2 } from 'lucide-react';
 import {
 	Dialog,
 	DialogClose,
@@ -21,6 +21,7 @@ import {
 	WALLET_CONNECTION_AD_BLOCKER_MESSAGE,
 	useWalletConnectionStallDetection,
 } from '@/hooks/useWalletConnectionStallDetection';
+import { useWalletReconnect } from '@/hooks/useWalletReconnect';
 import { useCopySuccessAnnouncement } from '@/hooks/useCopySuccessAnnouncement';
 import CopySuccessAnnouncement from '@/components/common/CopySuccessAnnouncement';
 import showToast from '@/utils/toast.util';
@@ -42,6 +43,20 @@ function ConnectWalletButton() {
 		isAwaitingWalletResponse: isPending,
 		hasWalletResponse: isConnected || Boolean(error),
 	});
+
+	const { showWaiting, showFailed, cancelAndReset } = useWalletReconnect({
+		isPending,
+		isConnected,
+		hasError: Boolean(error),
+		onRetry: useCallback(() => {
+			if (primaryConnector) connect({ connector: primaryConnector });
+		}, [connect, primaryConnector]),
+	});
+
+	const handleConnect = () => {
+		cancelAndReset();
+		if (primaryConnector) connect({ connector: primaryConnector });
+	};
 
 	const handleCopyAddress = async () => {
 		if (!address) return;
@@ -173,19 +188,30 @@ function ConnectWalletButton() {
 		);
 	}
 
+	const connectLabel = showWaiting
+		? 'Waiting for wallet…'
+		: isPending
+			? 'Connecting...'
+			: 'Connect Wallet';
+
 	return (
 		<div className="flex flex-col gap-2">
 			<button
 				type="button"
-				onClick={() =>
-					primaryConnector && connect({ connector: primaryConnector })
-				}
+				onClick={handleConnect}
 				disabled={!primaryConnector || isPending}
-				className="rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
+				className="flex items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
 			>
-				{isPending ? 'Connecting...' : 'Connect Wallet'}
+				{showWaiting ? (
+					<Loader2 className="size-4 animate-spin" aria-hidden="true" />
+				) : null}
+				{connectLabel}
 			</button>
-			{error ? (
+			{showFailed ? (
+				<p role="alert" className="text-sm text-red-600">
+					Could not connect &mdash; please try again
+				</p>
+			) : error ? (
 				<p className="text-sm text-red-600">{error.message}</p>
 			) : null}
 			{showAdBlockerSuggestion ? (

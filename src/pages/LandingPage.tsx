@@ -236,8 +236,7 @@ const toPriceFilterValue = (value: string) => {
 	return Number.isFinite(parsed) && parsed >= 0 ? parsed : undefined;
 };
 
-const getCreatorListKey = (creator: Course) =>
-	creatorListKey(creator.id);
+const getCreatorListKey = (creator: Course) => creatorListKey(creator.id);
 
 type SortOption = 'volume_desc' | 'price_asc' | 'price_desc' | 'newest';
 type CreatorListMode = 'pagination' | 'infinite';
@@ -327,7 +326,9 @@ function LandingPage() {
 		if (typeof window === 'undefined') return PAGE_SIZE;
 		const saved = window.sessionStorage.getItem(CREATOR_VISIBLE_COUNT_KEY);
 		const parsed = saved ? Number(saved) : PAGE_SIZE;
-		return Number.isFinite(parsed) && parsed >= PAGE_SIZE ? parsed : PAGE_SIZE;
+		return Number.isFinite(parsed) && parsed >= PAGE_SIZE
+			? parsed
+			: PAGE_SIZE;
 	});
 	const pendingScrollRestoreRef = useRef<number | null>(null);
 	const shortcutConfirmationTimerRef = useRef<number | null>(null);
@@ -394,7 +395,8 @@ function LandingPage() {
 	}, [searchQuery, sortOption, categoryFilter, searchParams, setSearchParams]);
 
 	useEffect(() => {
-		const searchVal = searchParams.get('search') ?? searchParams.get('q') ?? '';
+		const searchVal =
+			searchParams.get('search') ?? searchParams.get('q') ?? '';
 		if (searchVal !== searchQueryRef.current) {
 			setSearchQuery(searchVal);
 		}
@@ -862,7 +864,9 @@ function LandingPage() {
 			showToast.success('Address copied to clipboard', { duration: 2000 });
 			setTimeout(() => setStellarAddressCopied(false), 2000);
 		} catch {
-			showToast.error('Could not copy the Stellar address. Please copy it manually.');
+			showToast.error(
+				'Could not copy the Stellar address. Please copy it manually.'
+			);
 		}
 	};
 
@@ -903,7 +907,10 @@ function LandingPage() {
 					creator_name: FEATURED_CREATOR_NAME,
 					side: tradeSide,
 					quantity: amount,
-					error: error instanceof Error ? `${error.name}: ${error.message}` : String(error),
+					error:
+						error instanceof Error
+							? `${error.name}: ${error.message}`
+							: String(error),
 					timestamp: new Date().toISOString(),
 				});
 			}
@@ -1848,6 +1855,8 @@ function LandingPage() {
 					creatorName={FEATURED_CREATOR_NAME}
 					availableHoldings={featuredHoldings}
 					keyPriceStroops={resolveCreatorKeyPriceStroops(featuredCreator)}
+					protocolFeeBps={250}
+					creatorFeeBps={250}
 					isSubmitting={tradeSubmitting}
 					onOpenChange={setTradeDialogOpen}
 					onConfirm={handleConfirmTrade}

@@ -1,9 +1,11 @@
 import { useParams } from 'react-router';
 import { useCreatorDetail } from '@/hooks/useCreators';
+import { useCreatorProfileStaleIndicator } from '@/hooks/useCreatorProfileStaleIndicator';
 import CreatorBreadcrumb from '@/components/common/CreatorBreadcrumb';
 import CreatorProfileHeader from '@/components/common/CreatorProfileHeader';
 import CreatorProfileInfoGrid from '@/components/common/CreatorProfileInfoGrid';
 import CreatorActivityFeed from '@/components/common/CreatorActivityFeed';
+import CreatorProfileStaleIndicator from '@/components/common/CreatorProfileStaleIndicator';
 import { CreatorProfileHeaderSkeleton } from '@/components/common/CreatorSkeleton';
 import { bpsToPercent } from '@/utils/numberFormat.utils';
 import { resolveCreatorKeyPriceStroops } from '@/utils/keyPriceDisplay.utils';
@@ -13,8 +15,21 @@ import { useNavigationTiming } from '@/hooks/useNavigationTiming';
 
 function CreatorDetailPageContent() {
 	const { id } = useParams<{ id: string }>();
-	const { data: creator, isLoading, error } = useCreatorDetail(id || '');
+	const {
+		data: creator,
+		isLoading,
+		error,
+		isFetching,
+		refetch,
+	} = useCreatorDetail(id || '');
 	useNavigationTiming('creator_profile');
+
+	// Track stale data indicator
+	const { shouldShowBadge, handleRefetch } = useCreatorProfileStaleIndicator(
+		id || '',
+		isFetching,
+		() => refetch()
+	);
 
 	if (isLoading) {
 		return (
@@ -65,9 +80,16 @@ function CreatorDetailPageContent() {
 					priceStroops={resolveCreatorKeyPriceStroops(creator)}
 				/>
 				<div className="mt-8 rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 shadow-2xl backdrop-blur-md md:p-8">
-					<h2 className="font-grotesque text-xl font-black tracking-tight text-white mb-6">
-						Fee Structure
-					</h2>
+					<div className="flex items-center justify-between gap-4 mb-6">
+						<h2 className="font-grotesque text-xl font-black tracking-tight text-white">
+							Fee Structure
+						</h2>
+						<CreatorProfileStaleIndicator
+							visible={shouldShowBadge}
+							isRefetching={isFetching}
+							onRefresh={handleRefetch}
+						/>
+					</div>
 					<CreatorProfileInfoGrid items={feeItems} />
 				</div>
 				<div className="mt-8 rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 shadow-2xl backdrop-blur-md md:p-8">
