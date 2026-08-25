@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
+import { Moon, Sun } from 'lucide-react';
 import WalletStatusChip from '@/components/common/WalletStatusChip';
 import NotificationBell from '@/components/common/NotificationBell';
 import { useProfileStore } from '@/hooks/useProfileStore';
+import { useTheme } from '@/hooks/useTheme';
 import { Link } from 'react-router';
 
 const navLinks = [
@@ -13,6 +15,7 @@ const navLinks = [
 export default function Header() {
 	const [scrolled, setScrolled] = useState(false);
 	const profile = useProfileStore(state => state.profile);
+	const { theme, toggleTheme } = useTheme();
 
 	useEffect(() => {
 		const onScroll = () => {
@@ -69,9 +72,25 @@ export default function Header() {
 					)}
 				</nav>
 
-				{/* Right-side actions: notification bell (#720) + wallet status chip (#686).
+				{/* Right-side actions: dark mode toggle (#750) + notification bell (#720) + wallet status chip (#686).
 				    NotificationBell is only rendered when a user profile is available. */}
 				<div className="flex items-center gap-2">
+					<button
+						type="button"
+						onClick={toggleTheme}
+						aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
+						className={`rounded-md p-1.5 transition-colors duration-200 ${
+							scrolled
+								? 'text-gray-600 hover:bg-black/5 hover:text-gray-900'
+								: 'text-white/60 hover:text-white/90'
+						}`}
+					>
+						{theme === 'dark' ? (
+							<Sun className="size-4" aria-hidden="true" />
+						) : (
+							<Moon className="size-4" aria-hidden="true" />
+						)}
+					</button>
 					{profile && (
 						<NotificationBell
 							userId={profile.id}

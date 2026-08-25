@@ -105,13 +105,14 @@ class CourseService extends BaseApiService {
 		if (cached) return cached;
 
 		try {
-			const response = await this.api.get<APIResponse<CoursesPageEnvelope | Course[]>>(
-				'/courses',
-				{ params: requestParams }
-			);
+			const response = await this.api.get<
+				APIResponse<CoursesPageEnvelope | Course[]>
+			>('/courses', { params: requestParams });
 
 			const raw = response.data.data;
-			const items: Course[] = Array.isArray(raw) ? raw : (raw.items ?? raw.data ?? []);
+			const items: Course[] = Array.isArray(raw)
+				? raw
+				: (raw.items ?? raw.data ?? []);
 			const hasMore: boolean = Array.isArray(raw)
 				? items.length === limit
 				: (raw.has_more ?? raw.hasMore ?? items.length === limit);
@@ -169,6 +170,23 @@ class CourseService extends BaseApiService {
 		try {
 			const response = await this.api.post<APIResponse<Course>>(
 				'/courses',
+				courseData
+			);
+
+			return response.data.data;
+		} catch (error) {
+			throw this.handleError(error);
+		}
+	}
+
+	// Update course - PATCH /courses/:id
+	async updateCourse(
+		courseId: string,
+		courseData: Partial<Course>
+	): Promise<Course> {
+		try {
+			const response = await this.api.patch<APIResponse<Course>>(
+				`/courses/${courseId}`,
 				courseData
 			);
 
