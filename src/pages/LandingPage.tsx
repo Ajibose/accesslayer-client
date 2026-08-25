@@ -193,7 +193,6 @@ const DEMO_CREATORS: Course[] = [
 	},
 ];
 
-const CREATOR_SORT_KEY = 'accesslayer.creator-sort';
 const CREATOR_PAGE_KEY = 'accesslayer.creator-page';
 const CREATOR_SCROLL_KEY = 'accesslayer.creator-scrollY';
 const MAX_CREATOR_FETCH_RETRIES = 3;
@@ -232,7 +231,7 @@ const isCreatorRefreshShortcut = (event: KeyboardEvent) =>
 	!event.shiftKey &&
 	event.key.toLowerCase() === 'r';
 
-type SortOption = 'featured' | 'price-asc' | 'price-desc' | 'supply-desc';
+type SortOption = 'volume_desc' | 'price_asc' | 'price_desc' | 'newest';
 
 interface CreatorProfileLoadErrorProps {
 	onRetry: () => void;
@@ -288,7 +287,11 @@ function LandingPage() {
 	const [searchParams, setSearchParams] = useSearchParams();
 	const [searchQuery, setSearchQuery] = useState('');
 	const searchQueryRef = useRef<string>('');
-	const sortOptionRef = useRef<SortOption>('featured');
+	const [categoryFilter, setCategoryFilter] = useState<string>(() => {
+		const category = searchParams.get('category');
+		return category || '';
+	});
+	const sortOptionRef = useRef<SortOption>('volume_desc');
 	const PROFILE_TABS = ['overview', 'creations', 'collectors', 'activity'];
 	const [activeProfileTab, setActiveProfileTab] = useState(() => {
 		if (typeof window === 'undefined') return 'overview';
@@ -305,21 +308,12 @@ function LandingPage() {
 		const sort = searchParams.get('sort') as SortOption | null;
 		if (
 			sort &&
-			['featured', 'price-asc', 'price-desc', 'supply-desc'].includes(sort)
+			['volume_desc', 'price_asc', 'price_desc', 'newest'].includes(sort)
 		) {
 			sortOptionRef.current = sort;
 			return sort;
 		}
-		if (typeof window !== 'undefined') {
-			const saved = window.localStorage.getItem(
-				CREATOR_SORT_KEY
-			) as SortOption | null;
-			if (saved) {
-				sortOptionRef.current = saved;
-				return saved;
-			}
-		}
-		return 'featured';
+		return 'volume_desc';
 	});
 	const [fetchRetryAttempt, setFetchRetryAttempt] = useState(0);
 	const [fetchRequestId, setFetchRequestId] = useState(0);
@@ -365,25 +359,20 @@ function LandingPage() {
 		: undefined;
 
 	useEffect(() => {
-		if (typeof window !== 'undefined') {
-			window.localStorage.setItem(CREATOR_SORT_KEY, sortOption);
-		}
-	}, [sortOption]);
-
-	useEffect(() => {
 		const newParams = new URLSearchParams(searchParams);
 		if (searchQuery.trim()) {
 			newParams.set('q', searchQuery.trim());
 		} else {
 			newParams.delete('q');
 		}
-		if (sortOption !== 'featured') {
-			newParams.set('sort', sortOption);
+		newParams.set('sort', sortOption);
+		if (categoryFilter) {
+			newParams.set('category', categoryFilter);
 		} else {
-			newParams.delete('sort');
+			newParams.delete('category');
 		}
 		setSearchParams(newParams, { replace: true });
-	}, [searchQuery, sortOption, searchParams, setSearchParams]);
+	}, [searchQuery, sortOption, categoryFilter, searchParams, setSearchParams]);
 
 	useEffect(() => {
 		const q = searchParams.get('q');
@@ -395,16 +384,22 @@ function LandingPage() {
 		const sort = searchParams.get('sort') as SortOption | null;
 		if (
 			sort &&
-			['featured', 'price-asc', 'price-desc', 'supply-desc'].includes(
+			['volume_desc', 'price_asc', 'price_desc', 'newest'].includes(
 				sort
 			) &&
 			sort !== sortOptionRef.current
 		) {
 			setSortOption(sort);
-		} else if (sort === null && sortOptionRef.current !== 'featured') {
-			setSortOption('featured');
+		} else if (sort === null && sortOptionRef.current !== 'volume_desc') {
+			setSortOption('volume_desc');
 		}
-	}, [searchParams]);
+		const category = searchParams.get('category');
+		if (category !== null && category !== categoryFilter) {
+			setCategoryFilter(category);
+		} else if (category === null && categoryFilter !== '') {
+			setCategoryFilter('');
+		}
+	}, [searchParams, categoryFilter]);
 
 	useEffect(() => {
 		if (typeof window === 'undefined') return;
@@ -522,24 +517,37 @@ function LandingPage() {
 					.toLowerCase()
 					.includes(trimmedSearchQuery.toLowerCase())
 		);
-		const sorted = [...filtered];
+
+		// Apply category filter
+		const categoryFiltered = categoryFilter
+			? filtered.filter(creator =>
+					creator.category?.toLowerCase() === categoryFilter.toLowerCase()
+			  )
+			: filtered;
+		const sorted = [...categoryFiltered];
 		const priceOf = (creator: Course) =>
 			resolveCreatorKeyPriceStroops(creator) ?? 0;
 
 		switch (sortOption) {
-			case 'price-asc':
+			case 'price_asc':
 				sorted.sort((a, b) => priceOf(a) - priceOf(b));
 				break;
-			case 'price-desc':
+			case 'price_desc':
 				sorted.sort((a, b) => priceOf(b) - priceOf(a));
 				break;
-			case 'supply-desc':
+			case 'newest':
+				sorted.sort((a, b) => {
+					const dateA = a.nextDropAt ? new Date(a.nextDropAt).getTime() : 0;
+					const dateB = b.nextDropAt ? new Date(b.nextDropAt).getTime() : 0;
+					return dateB - dateA;
+				});
+				break;
+			case 'volume_desc':
+			default:
 				sorted.sort(
 					(a, b) =>
 						(b.creatorShareSupply ?? 0) - (a.creatorShareSupply ?? 0)
 				);
-				break;
-			default:
 				break;
 		}
 		return sorted;
@@ -559,7 +567,7 @@ function LandingPage() {
 
 	useEffect(() => {
 		setPage(0);
-	}, [trimmedSearchQuery, sortOption]);
+	}, [trimmedSearchQuery, sortOption, categoryFilter]);
 
 	const totalPages = Math.max(
 		1,
@@ -593,7 +601,10 @@ function LandingPage() {
 		setPage(nextPage);
 	};
 
-	const handleResetSearch = () => setSearchQuery('');
+	const handleResetSearch = () => {
+		setSearchQuery('');
+		setCategoryFilter('');
+	};
 
 	const handleRetryCreatorFetch = useCallback(() => {
 		setFinalFetchError('');
@@ -804,7 +815,7 @@ function LandingPage() {
 						description="Search by creator name or handle while you keep scrolling through the marketplace. The filter shell stays visible and compact so you can refine results without losing your place."
 						resultCount={filteredCreators.length}
 						onReset={handleResetSearch}
-						showReset={searchQuery.length > 0}
+						showReset={searchQuery.length > 0 || categoryFilter.length > 0}
 					>
 						<div className="space-y-3">
 							<SearchBar
@@ -829,14 +840,43 @@ function LandingPage() {
 									}
 									className="h-9 rounded-lg border border-white/15 bg-slate-950/80 px-3 text-sm text-white outline-none focus:border-amber-400/60"
 								>
-									<option value="featured">Featured</option>
-									<option value="price-asc">Price: Low to high</option>
-									<option value="price-desc">
+									<option value="volume_desc">Volume: High to low</option>
+									<option value="price_asc">Price: Low to high</option>
+									<option value="price_desc">
 										Price: High to low
 									</option>
-									<option value="supply-desc">
-										Supply: High to low
-									</option>
+									<option value="newest">Newest</option>
+								</select>
+							</div>
+							<div className="flex items-center gap-3">
+								<label
+									htmlFor="creator-category"
+									className="marketplace-label-muted text-xs font-semibold uppercase tracking-[0.16em]"
+								>
+									Category
+								</label>
+								<select
+									id="creator-category"
+									value={categoryFilter}
+									onChange={e => setCategoryFilter(e.target.value)}
+									className="h-9 rounded-lg border border-white/15 bg-slate-950/80 px-3 text-sm text-white outline-none focus:border-amber-400/60"
+								>
+									<option value="">All categories</option>
+									{Array.from(
+										new Set(
+											creators
+												.map(c => c.category)
+												.filter(
+													(cat): cat is string => Boolean(cat)
+												)
+										)
+									)
+										.sort()
+										.map(category => (
+											<option key={category} value={category}>
+												{category}
+											</option>
+										))}
 								</select>
 							</div>
 							<div
