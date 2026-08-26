@@ -15,6 +15,8 @@ import { resolveCreatorKeyPriceStroops, formatDisplayKeyPrice } from '@/utils/ke
 import CreatorPageErrorBoundary from '@/components/common/CreatorPageErrorBoundary';
 import { ApiError } from '@/services/api.service';
 import { useNavigationTiming } from '@/hooks/useNavigationTiming';
+import { useKeyHolders } from '@/hooks/useKeyHolders';
+import KeyHolderList from '@/components/common/KeyHolderList';
 
 function CreatorDetailPageContent() {
 	const { id } = useParams<{ id: string }>();
@@ -26,6 +28,13 @@ function CreatorDetailPageContent() {
 		refetch,
 	} = useCreatorDetail(id || '');
 	useNavigationTiming('creator_profile');
+
+	const {
+		holders,
+		hasNextPage,
+		isFetchingNextPage,
+		fetchNextPage,
+	} = useKeyHolders(id || '');
 
 	// Track stale data indicator
 	const { shouldShowBadge, handleRefetch } = useCreatorProfileStaleIndicator(
@@ -167,6 +176,17 @@ function CreatorDetailPageContent() {
 
 				{/* Activity Feed */}
 				<div className="rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 shadow-2xl backdrop-blur-md md:p-8">
+					<h2 className="font-grotesque text-xl font-black tracking-tight text-white mb-6">
+						Key Holders
+					</h2>
+					<KeyHolderList
+						holders={holders}
+						hasNextPage={hasNextPage}
+						isFetchingNextPage={isFetchingNextPage}
+						fetchNextPage={() => { void fetchNextPage(); }}
+					/>
+				</div>
+				<div className="mt-8 rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 shadow-2xl backdrop-blur-md md:p-8">
 					<h2 className="font-grotesque text-xl font-black tracking-tight text-white mb-6">
 						Activity
 					</h2>

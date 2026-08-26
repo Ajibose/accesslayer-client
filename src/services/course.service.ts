@@ -61,6 +61,20 @@ export interface CoursesPage {
 	hasMore: boolean;
 }
 
+/** Single holder entry from the key holders endpoint. */
+export interface KeyHolderEntry {
+	id: string;
+	displayName: string;
+	walletAddress: string;
+	keyCount: number;
+}
+
+/** Cursor-paginated response envelope for the key holders endpoint. */
+export interface KeyHoldersPage {
+	holders: KeyHolderEntry[];
+	nextCursor: string | null;
+}
+
 class CourseService extends BaseApiService {
 	private readonly PROFILE_CACHE_TTL = 30000; // 30 seconds
 
@@ -139,6 +153,26 @@ class CourseService extends BaseApiService {
 			const data = response.data.data;
 			cacheManager.set(cacheKey, data, this.PROFILE_CACHE_TTL);
 			return data;
+		} catch (error) {
+			throw this.handleError(error);
+		}
+	}
+
+	// Get key holders - GET /keys/:keyId/holders
+	async getHoldersPage(
+		keyId: string,
+		cursor?: string | null
+	): Promise<KeyHoldersPage> {
+		try {
+			const params: Record<string, string> = {};
+			if (cursor) params.cursor = cursor;
+
+			const response = await this.api.get<APIResponse<KeyHoldersPage>>(
+				`/keys/${keyId}/holders`,
+				{ params }
+			);
+
+			return response.data.data;
 		} catch (error) {
 			throw this.handleError(error);
 		}

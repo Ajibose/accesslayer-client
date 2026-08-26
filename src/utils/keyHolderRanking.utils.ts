@@ -2,6 +2,7 @@ export interface KeyHolder {
 	id: string;
 	displayName: string;
 	keyCount: number;
+	walletAddress?: string;
 }
 
 export interface RankedKeyHolder extends KeyHolder {
