@@ -10,6 +10,7 @@ export interface HeldKeyPosition extends CreatorKeyPriceFields {
 	isPriceLoading?: boolean;
 	isPriceStale?: boolean;
 	pending?: boolean;
+	last_buy_timestamp?: number | string | null;
 }
 
 export type PortfolioValueStatus = 'ready' | 'loading' | 'unavailable';
