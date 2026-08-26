@@ -30,7 +30,10 @@ export interface Course {
 }
 
 export type CourseSortOption =
-	'featured' | 'price-asc' | 'price-desc' | 'supply-desc';
+	| 'volume_desc'
+	| 'price_asc'
+	| 'price_desc'
+	| 'newest';
 
 export interface GetCoursesParams {
 	page?: number;
@@ -39,7 +42,7 @@ export interface GetCoursesParams {
 	search?: string;
 	min_price?: number;
 	max_price?: number;
-	sort?: Exclude<CourseSortOption, 'featured'>;
+	sort?: CourseSortOption;
 }
 
 /** Raw envelope shape for a paginated /courses response. */
