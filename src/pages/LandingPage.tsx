@@ -3,7 +3,7 @@ import { useDebounce } from '@/hooks/useDebounce';
 import { useInfiniteScroll } from '@/hooks/useInfiniteScroll';
 import { LayoutGroup, motion } from 'framer-motion';
 import { useSearchParams } from 'react-router';
-import { courseService, type Course } from '@/services/course.service';
+import { courseService, type Course, type CourseSortOption } from '@/services/course.service';
 import SkipToContent from '@/components/common/SkipToContent';
 import { cn } from '@/lib/utils';
 import SearchBar from '@/components/common/SearchBar';
@@ -16,6 +16,7 @@ import {
 import { CreatorCardGridSkeleton } from '@/components/common/CreatorCardSkeleton';
 import EmptyState from '@/components/common/EmptyState';
 import HoldingsEmptyState from '@/components/common/HoldingsEmptyState';
+import PortfolioHoldingRow from '@/components/common/PortfolioHoldingRow';
 import EmptySearchSuggestions from '@/components/common/EmptySearchSuggestions';
 import SectionDivider from '@/components/common/SectionDivider';
 import { Button } from '@/components/ui/button';
@@ -66,7 +67,6 @@ import {
 	creatorCardEntryStyle,
 } from '@/utils/cardEntryAnimation.utils';
 import {
-	formatDisplayKeyPrice,
 	resolveCreatorKeyPriceStroops,
 } from '@/utils/keyPriceDisplay.utils';
 import { usePrefersReducedMotion } from '@/hooks/usePrefersReducedMotion';
@@ -182,7 +182,6 @@ const DEMO_CREATORS: Course[] = [
 	},
 ];
 
-const CREATOR_SORT_KEY = 'accesslayer.creator-sort';
 const CREATOR_PAGE_KEY = 'accesslayer.creator-page';
 const CREATOR_SCROLL_KEY = 'accesslayer.creator-scrollY';
 const CREATOR_LIST_MODE_KEY = 'accesslayer.creator-list-mode';
@@ -239,7 +238,6 @@ const toPriceFilterValue = (value: string) => {
 
 const getCreatorListKey = (creator: Course) => creatorListKey(creator.id);
 
-type SortOption = 'featured' | 'price-asc' | 'price-desc' | 'supply-desc';
 type CreatorListMode = 'pagination' | 'infinite';
 
 function LandingPage() {
@@ -267,7 +265,11 @@ function LandingPage() {
 	const [minPriceFilter, setMinPriceFilter] = useState('');
 	const [maxPriceFilter, setMaxPriceFilter] = useState('');
 	const searchQueryRef = useRef<string>('');
-	const sortOptionRef = useRef<SortOption>('featured');
+	const [categoryFilter, setCategoryFilter] = useState<string>(() => {
+		const category = searchParams.get('category');
+		return category || '';
+	});
+	const sortOptionRef = useRef<CourseSortOption>('volume_desc');
 	const PROFILE_TABS = ['overview', 'creations', 'collectors', 'activity'];
 	const [activeProfileTab, setActiveProfileTab] = useState(() => {
 		if (typeof window === 'undefined') return 'overview';
@@ -281,25 +283,16 @@ function LandingPage() {
 	const [tradeSubmitting, setTradeSubmitting] = useState(false);
 	const [stellarAddressCopied, setStellarAddressCopied] = useState(false);
 	const prefersReducedMotion = usePrefersReducedMotion();
-	const [sortOption, setSortOption] = useState<SortOption>(() => {
-		const sort = searchParams.get('sort') as SortOption | null;
+	const [sortOption, setSortOption] = useState<CourseSortOption>(() => {
+		const sort = searchParams.get('sort') as CourseSortOption | null;
 		if (
 			sort &&
-			['featured', 'price-asc', 'price-desc', 'supply-desc'].includes(sort)
+			['volume_desc', 'price_asc', 'price_desc', 'newest'].includes(sort)
 		) {
 			sortOptionRef.current = sort;
 			return sort;
 		}
-		if (typeof window !== 'undefined') {
-			const saved = window.localStorage.getItem(
-				CREATOR_SORT_KEY
-			) as SortOption | null;
-			if (saved) {
-				sortOptionRef.current = saved;
-				return saved;
-			}
-		}
-		return 'featured';
+		return 'volume_desc';
 	});
 	const [fetchRetryAttempt, setFetchRetryAttempt] = useState(0);
 	const [fetchRequestId, setFetchRequestId] = useState(0);
@@ -355,13 +348,6 @@ function LandingPage() {
 	const searchValidationMessage = hasInvalidSearchInput
 		? 'Only letters, numbers, spaces, hyphens, and underscores are supported.'
 		: undefined;
-
-	useEffect(() => {
-		if (typeof window !== 'undefined') {
-			window.localStorage.setItem(CREATOR_SORT_KEY, sortOption);
-		}
-	}, [sortOption]);
-
 	useEffect(() => {
 		const newParams = new URLSearchParams(searchParams);
 		let changed = false;
@@ -384,14 +370,20 @@ function LandingPage() {
 		}
 
 		const currentSort = searchParams.get('sort');
-		if (sortOption !== 'featured') {
-			if (currentSort !== sortOption) {
-				newParams.set('sort', sortOption);
+		if (currentSort !== sortOption) {
+			newParams.set('sort', sortOption);
+			changed = true;
+		}
+
+		const currentCategory = searchParams.get('category');
+		if (categoryFilter) {
+			if (currentCategory !== categoryFilter) {
+				newParams.set('category', categoryFilter);
 				changed = true;
 			}
 		} else {
-			if (searchParams.has('sort')) {
-				newParams.delete('sort');
+			if (searchParams.has('category')) {
+				newParams.delete('category');
 				changed = true;
 			}
 		}
@@ -399,7 +391,7 @@ function LandingPage() {
 		if (changed) {
 			setSearchParams(newParams, { replace: true });
 		}
-	}, [searchQuery, sortOption, searchParams, setSearchParams]);
+	}, [searchQuery, sortOption, categoryFilter, searchParams, setSearchParams]);
 
 	useEffect(() => {
 		const searchVal =
@@ -407,16 +399,21 @@ function LandingPage() {
 		if (searchVal !== searchQueryRef.current) {
 			setSearchQuery(searchVal);
 		}
-		const sort = searchParams.get('sort') as SortOption | null;
-		const validSort: SortOption =
-			sort &&
-			['featured', 'price-asc', 'price-desc', 'supply-desc'].includes(sort)
-				? (sort as SortOption)
-				: 'featured';
+		const sort = searchParams.get('sort') as CourseSortOption | null;
+		const validSort: CourseSortOption =
+			sort && ['volume_desc', 'price_asc', 'price_desc', 'newest'].includes(sort)
+				? (sort as CourseSortOption)
+				: 'volume_desc';
 		if (validSort !== sortOptionRef.current) {
+			sortOptionRef.current = validSort;
 			setSortOption(validSort);
 		}
-	}, [searchParams]);
+
+		const category = searchParams.get('category');
+		if (category !== categoryFilter) {
+			setCategoryFilter(category || '');
+		}
+	}, [searchParams, categoryFilter]);
 
 	useEffect(() => {
 		if (typeof window === 'undefined') return;
@@ -493,7 +490,7 @@ function LandingPage() {
 					...(debouncedSearchQuery.trim()
 						? { search: debouncedSearchQuery.trim() }
 						: {}),
-					...(sortOption !== 'featured' ? { sort: sortOption } : {}),
+					sort: sortOption,
 				};
 				const data = await courseService.getCourses(
 					Object.keys(params).length > 0 ? params : undefined
@@ -574,28 +571,42 @@ function LandingPage() {
 					.toLowerCase()
 					.includes(trimmedSearchQuery.toLowerCase())
 		);
-		const sorted = [...filtered];
+
+		// Apply category filter
+		const categoryFiltered = categoryFilter
+			? filtered.filter(creator =>
+					creator.category?.toLowerCase() === categoryFilter.toLowerCase()
+			  )
+			: filtered;
+
+		const sorted = [...categoryFiltered];
 		const priceOf = (creator: Course) =>
 			resolveCreatorKeyPriceStroops(creator) ?? 0;
 
 		switch (sortOption) {
-			case 'price-asc':
+			case 'price_asc':
 				sorted.sort((a, b) => priceOf(a) - priceOf(b));
 				break;
-			case 'price-desc':
+			case 'price_desc':
 				sorted.sort((a, b) => priceOf(b) - priceOf(a));
 				break;
-			case 'supply-desc':
+			case 'newest':
+				sorted.sort((a, b) => {
+					const dateA = a.nextDropAt ? new Date(a.nextDropAt).getTime() : 0;
+					const dateB = b.nextDropAt ? new Date(b.nextDropAt).getTime() : 0;
+					return dateB - dateA;
+				});
+				break;
+			case 'volume_desc':
+			default:
 				sorted.sort(
 					(a, b) =>
 						(b.creatorShareSupply ?? 0) - (a.creatorShareSupply ?? 0)
 				);
 				break;
-			default:
-				break;
 		}
 		return sorted;
-	}, [creators, trimmedSearchQuery, hasInvalidSearchInput, sortOption]);
+	}, [creators, trimmedSearchQuery, hasInvalidSearchInput, sortOption, categoryFilter]);
 
 	// Add loading state for filter changes
 	useEffect(() => {
@@ -607,7 +618,7 @@ function LandingPage() {
 		}, 300); // Short delay to show loading indicator
 
 		return () => clearTimeout(timer);
-	}, [trimmedSearchQuery, sortOption, creators.length]);
+	}, [trimmedSearchQuery, sortOption, categoryFilter, creators.length]);
 
 	// Resets pagination when the search/sort criteria actually change. Skips
 	// the initial mount so restoring a persisted page/visibleCount (#639)
@@ -620,7 +631,7 @@ function LandingPage() {
 		}
 		setPage(0);
 		setVisibleCount(PAGE_SIZE);
-	}, [trimmedSearchQuery, sortOption]);
+	}, [trimmedSearchQuery, sortOption, categoryFilter]);
 
 	// Switching modes starts the newly active view from the top of the
 	// filtered results rather than wherever the other mode left off. Skips
@@ -687,7 +698,10 @@ function LandingPage() {
 		setPage(nextPage);
 	};
 
-	const handleResetSearch = () => setSearchQuery('');
+	const handleResetSearch = () => {
+		setSearchQuery('');
+		setCategoryFilter('');
+	};
 	const handleClearPriceFilters = () => {
 		setMinPriceFilter('');
 		setMaxPriceFilter('');
@@ -858,16 +872,18 @@ function LandingPage() {
 	const handleConfirmTrade = async (amount: number) => {
 		setTradeSubmitting(true);
 		try {
-			if (tradeSide === 'buy') {
+		    if (tradeSide === 'buy') {
 				showToast.loading(
 					`Submitting buy for ${amount} key${amount === 1 ? '' : 's'}...`
 				);
-				await tradeMutation.mutateAsync({
-					creatorId: '1',
-					amount,
-					priceStroops: resolveCreatorKeyPriceStroops(featuredCreator),
-					price: featuredCreator?.price,
-				});
+					const urlRef = new URL(window.location.href).searchParams.get('ref');
+					await tradeMutation.mutateAsync({
+						creatorId: '1',
+						amount,
+						priceStroops: resolveCreatorKeyPriceStroops(featuredCreator),
+						price: featuredCreator?.price,
+						ref: urlRef,
+					});
 				setFeaturedHoldings(current => current + amount);
 				showToast.transactionSuccess(
 					'Trade confirmed',
@@ -976,7 +992,7 @@ function LandingPage() {
 						description="Search by creator name or handle while you keep scrolling through the marketplace. The filter shell stays visible and compact so you can refine results without losing your place."
 						resultCount={filteredCreators.length}
 						onReset={handleResetSearch}
-						showReset={searchQuery.length > 0}
+						showReset={searchQuery.length > 0 || categoryFilter.length > 0}
 					>
 						<div className="space-y-3">
 							<SearchBar
@@ -997,18 +1013,47 @@ function LandingPage() {
 									id="creator-sort"
 									value={sortOption}
 									onChange={e =>
-										setSortOption(e.target.value as SortOption)
+										setSortOption(e.target.value as CourseSortOption)
 									}
 									className="h-9 rounded-lg border border-white/15 bg-slate-950/80 px-3 text-sm text-white outline-none focus:border-amber-400/60"
 								>
-									<option value="featured">Featured</option>
-									<option value="price-asc">Price: Low to high</option>
-									<option value="price-desc">
+									<option value="volume_desc">Volume: High to low</option>
+									<option value="price_asc">Price: Low to high</option>
+									<option value="price_desc">
 										Price: High to low
 									</option>
-									<option value="supply-desc">
-										Supply: High to low
-									</option>
+									<option value="newest">Newest</option>
+								</select>
+							</div>
+							<div className="flex items-center gap-3">
+								<label
+									htmlFor="creator-category"
+									className="marketplace-label-muted text-xs font-semibold uppercase tracking-[0.16em]"
+								>
+									Category
+								</label>
+								<select
+									id="creator-category"
+									value={categoryFilter}
+									onChange={e => setCategoryFilter(e.target.value)}
+									className="h-9 rounded-lg border border-white/15 bg-slate-950/80 px-3 text-sm text-white outline-none focus:border-amber-400/60"
+								>
+									<option value="">All categories</option>
+									{Array.from(
+										new Set(
+											creators
+												.map(c => c.category)
+												.filter(
+													(cat): cat is string => Boolean(cat)
+												)
+										)
+									)
+										.sort()
+										.map(category => (
+											<option key={category} value={category}>
+												{category}
+											</option>
+										))}
 								</select>
 							</div>
 							<div className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-end">
@@ -1429,7 +1474,7 @@ function LandingPage() {
 							// Settled empty only — skeleton covers loading so this never flashes.
 							<HoldingsEmptyState />
 						) : (
-							<div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+							<div className="mt-6 grid gap-3 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
 								{heldKeyPositions
 									.filter(
 										position =>
@@ -1440,35 +1485,15 @@ function LandingPage() {
 											item => item.id === position.creatorId
 										);
 										return (
-											<div
+											<PortfolioHoldingRow
 												key={position.creatorId}
-												className={cn(
-													'rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-opacity',
-													position.pending && 'opacity-60'
-												)}
-											>
-												<div className="truncate text-sm font-bold text-white">
-													{creator?.title ?? 'Unknown creator'}
-												</div>
-												<div className="mt-1 text-xs text-white/55">
-													{position.pending && (
-														<span className="mr-2 inline-flex items-center gap-1 rounded-full bg-amber-400/10 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-amber-400">
-															<span className="size-2.5 animate-spin rounded-full border-2 border-amber-400/30 border-t-amber-400" />
-															Pending
-														</span>
-													)}
-													{formatNumber(position.quantity)} keys ·{' '}
-													{position.isPriceLoading
-														? 'Refreshing price'
-														: position.isPriceStale
-															? 'Price stale'
-															: formatDisplayKeyPrice(
-																	resolveCreatorKeyPriceStroops(
-																		position
-																	)
-																)}
-												</div>
-											</div>
+												position={position}
+												creator={creator}
+												onBuy={() => openTradeDialog('buy')}
+												onSell={() => openTradeDialog('sell')}
+												isSubmitting={tradeSubmitting}
+												isNetworkMismatch={isNetworkMismatch}
+											/>
 										);
 									})}
 							</div>

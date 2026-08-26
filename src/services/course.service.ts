@@ -30,7 +30,10 @@ export interface Course {
 }
 
 export type CourseSortOption =
-	'featured' | 'price-asc' | 'price-desc' | 'supply-desc';
+	| 'volume_desc'
+	| 'price_asc'
+	| 'price_desc'
+	| 'newest';
 
 export interface GetCoursesParams {
 	page?: number;
@@ -39,7 +42,7 @@ export interface GetCoursesParams {
 	search?: string;
 	min_price?: number;
 	max_price?: number;
-	sort?: Exclude<CourseSortOption, 'featured'>;
+	sort?: CourseSortOption;
 }
 
 /** Raw envelope shape for a paginated /courses response. */
@@ -56,6 +59,20 @@ export interface CoursesPage {
 	page: number;
 	/** Whether another page is available after this one. */
 	hasMore: boolean;
+}
+
+/** Single holder entry from the key holders endpoint. */
+export interface KeyHolderEntry {
+	id: string;
+	displayName: string;
+	walletAddress: string;
+	keyCount: number;
+}
+
+/** Cursor-paginated response envelope for the key holders endpoint. */
+export interface KeyHoldersPage {
+	holders: KeyHolderEntry[];
+	nextCursor: string | null;
 }
 
 class CourseService extends BaseApiService {
@@ -141,6 +158,26 @@ class CourseService extends BaseApiService {
 		}
 	}
 
+	// Get key holders - GET /keys/:keyId/holders
+	async getHoldersPage(
+		keyId: string,
+		cursor?: string | null
+	): Promise<KeyHoldersPage> {
+		try {
+			const params: Record<string, string> = {};
+			if (cursor) params.cursor = cursor;
+
+			const response = await this.api.get<APIResponse<KeyHoldersPage>>(
+				`/keys/${keyId}/holders`,
+				{ params }
+			);
+
+			return response.data.data;
+		} catch (error) {
+			throw this.handleError(error);
+		}
+	}
+
 	// Get enrolled courses - GET /courses/enrolled
 	async getEnrolledCourses(): Promise<Course[]> {
 		try {
@@ -188,6 +225,34 @@ class CourseService extends BaseApiService {
 			);
 
 			return response.data.data;
+		} catch (error) {
+			throw this.handleError(error);
+		}
+	}
+
+	// Search keys - GET /keys/search?q=:query
+	async searchKeys(query: string): Promise<Course[]> {
+		const trimmed = query.trim();
+		if (!trimmed) return [];
+
+		try {
+			const response = await this.api.get<
+				APIResponse<Course[] | { items: Course[] }>
+			>('/keys/search', {
+				params: { q: trimmed },
+			});
+
+			const raw = response.data.data;
+			if (Array.isArray(raw)) return raw;
+			if (
+				raw &&
+				typeof raw === 'object' &&
+				'items' in raw &&
+				Array.isArray(raw.items)
+			) {
+				return raw.items;
+			}
+			return [];
 		} catch (error) {
 			throw this.handleError(error);
 		}
