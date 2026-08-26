@@ -1,4 +1,3 @@
-import React from 'react';
 import ReferralLinkPanel from '@/components/common/ReferralLinkPanel';
 import { useProfileStore } from '@/hooks/useProfileStore';
 
