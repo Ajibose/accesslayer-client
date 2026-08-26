@@ -192,6 +192,34 @@ class CourseService extends BaseApiService {
 			throw this.handleError(error);
 		}
 	}
+
+	// Search keys - GET /keys/search?q=:query
+	async searchKeys(query: string): Promise<Course[]> {
+		const trimmed = query.trim();
+		if (!trimmed) return [];
+
+		try {
+			const response = await this.api.get<
+				APIResponse<Course[] | { items: Course[] }>
+			>('/keys/search', {
+				params: { q: trimmed },
+			});
+
+			const raw = response.data.data;
+			if (Array.isArray(raw)) return raw;
+			if (
+				raw &&
+				typeof raw === 'object' &&
+				'items' in raw &&
+				Array.isArray(raw.items)
+			) {
+				return raw.items;
+			}
+			return [];
+		} catch (error) {
+			throw this.handleError(error);
+		}
+	}
 }
 
 export const courseService = new CourseService();

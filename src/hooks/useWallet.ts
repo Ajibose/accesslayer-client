@@ -38,6 +38,8 @@ export interface TradeVariables {
 	amount: number;
 	priceStroops: number | null | undefined;
 	price: number | null | undefined;
+	/** Optional referral wallet address forwarded from a referral link */
+	ref?: string | null;
 }
 
 export function useTradeMutation(address: string) {
@@ -45,7 +47,11 @@ export function useTradeMutation(address: string) {
 
 	const mutation = useMutation({
 		mutationKey: ['trade', address],
-		mutationFn: async () => {
+		mutationFn: async (variables: TradeVariables) => {
+			// In production this would call the on-chain contract; here we
+			// simulate latency. The `ref` field is accepted and can be used
+			// by instrumentation or contract calls.
+			void variables;
 			await new Promise<void>(resolve => window.setTimeout(resolve, 900));
 			return { success: true as const };
 		},
@@ -173,6 +179,45 @@ export function useTradeMutation(address: string) {
 					invalidated_at: new Date().toISOString(),
 				});
 			}
+		},
+	});
+
+	return mutation;
+}
+
+export interface BatchOrder {
+	creatorId: string;
+	quantity: number;
+	priceStroops: number;
+	ref?: string | null;
+}
+
+export function useBatchBuyMutation(address?: string) {
+	const queryClient = useQueryClient();
+
+	const mutation = useMutation({
+		mutationKey: ['batch-buy', address],
+		mutationFn: async ({ orders }: { orders: BatchOrder[] }) => {
+			// In a real app this would call the on-chain `batch_buy` contract
+			// function. Here we simulate latency and accept the orders payload.
+			void orders;
+			await new Promise<void>(resolve => window.setTimeout(resolve, 1200));
+			return { success: true as const };
+		},
+	    onMutate: async () => {
+			// Optionally optimistic updates to holdings could be applied here.
+			return {};
+		},
+		onError: (error) => {
+			if (process.env.NODE_ENV !== 'test') {
+				console.debug('[batch-buy-failed]', { error });
+			}
+			showToast.error('Batch buy failed');
+		},
+		onSuccess: () => {
+			// Invalidate caches that depend on market data.
+			queryClient.invalidateQueries({ queryKey: ['creators'] });
+			queryClient.invalidateQueries({ queryKey: ['wallet', 'holdings'] });
 		},
 	});
 
