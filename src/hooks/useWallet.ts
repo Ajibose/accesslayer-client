@@ -178,3 +178,29 @@ export function useTradeMutation(address: string) {
 
 	return mutation;
 }
+
+export interface BatchOrder {
+	creatorId: string;
+	priceStroops: number;
+	quantity: number;
+}
+
+export function useBatchBuyMutation() {
+	const queryClient = useQueryClient();
+
+	return useMutation<{ success: true }, unknown, { orders: BatchOrder[] }>({
+		mutationKey: ['batch-buy'],
+		mutationFn: async (_vars: { orders: BatchOrder[] }) => {
+			void _vars;
+			// Simulate network latency for local tests; real implementation
+			// should call the backend service to submit the batch buy.
+			await new Promise<void>(resolve => window.setTimeout(resolve, 900));
+			return { success: true as const };
+		},
+		onSuccess: () => {
+			// Invalidate relevant caches so UI updates after a batch buy.
+			queryClient.invalidateQueries({ queryKey: queryKeys.wallet.holdings(undefined as unknown as string) });
+			queryClient.invalidateQueries({ queryKey: queryKeys.creators.all });
+		},
+	});
+}
