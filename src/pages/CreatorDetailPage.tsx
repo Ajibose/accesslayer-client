@@ -1,4 +1,4 @@
-import { useParams } from 'react-router';
+﻿import { useParams } from 'react-router';
 import { useCreatorDetail } from '@/hooks/useCreators';
 import { useCreatorProfileStaleIndicator } from '@/hooks/useCreatorProfileStaleIndicator';
 import CreatorBreadcrumb from '@/components/common/CreatorBreadcrumb';
@@ -16,7 +16,6 @@ import KeyDetailPageErrorBoundary from '@/components/common/KeyDetailPageErrorBo
 import { ApiError } from '@/services/api.service';
 import { useNavigationTiming } from '@/hooks/useNavigationTiming';
 import { useKeyHolders } from '@/hooks/useKeyHolders';
-import KeyHolderList from '@/components/common/KeyHolderList';
 
 function CreatorDetailPageContent() {
 	const { id } = useParams<{ id: string }>();
