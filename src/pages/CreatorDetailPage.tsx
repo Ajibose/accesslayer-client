@@ -12,7 +12,7 @@ import KeyHolderList from '@/components/common/KeyHolderList';
 import { CreatorDashboardSkeleton } from '@/components/common/CreatorSkeleton';
 import { bpsToPercent, formatNumber } from '@/utils/numberFormat.utils';
 import { resolveCreatorKeyPriceStroops, formatDisplayKeyPrice } from '@/utils/keyPriceDisplay.utils';
-import CreatorPageErrorBoundary from '@/components/common/CreatorPageErrorBoundary';
+import KeyDetailPageErrorBoundary from '@/components/common/KeyDetailPageErrorBoundary';
 import { ApiError } from '@/services/api.service';
 import { useNavigationTiming } from '@/hooks/useNavigationTiming';
 import { useKeyHolders } from '@/hooks/useKeyHolders';
@@ -199,8 +199,8 @@ function CreatorDetailPageContent() {
 
 export default function CreatorDetailPage() {
 	return (
-		<CreatorPageErrorBoundary>
+		<KeyDetailPageErrorBoundary>
 			<CreatorDetailPageContent />
-		</CreatorPageErrorBoundary>
+		</KeyDetailPageErrorBoundary>
 	);
 }
