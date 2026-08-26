@@ -27,6 +27,9 @@ export interface Course {
 	protocolFeeBps?: number;
 	/** Last up to 7 price history points in stroops, oldest to newest. */
 	priceHistory?: number[];
+	holderCount?: number;
+	holdersCount?: number;
+	holders?: number;
 }
 
 export type CourseSortOption =
