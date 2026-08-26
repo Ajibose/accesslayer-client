@@ -3,6 +3,7 @@ import NotFoundPage from './pages/NotFoundPage';
 import CreatorDetailPage from './pages/CreatorDetailPage';
 import NotificationsPage from './pages/NotificationsPage';
 import ProfilePage from './pages/ProfilePage';
+import FollowingPage from './pages/FollowingPage';
 
 export const routes = [
 	{
@@ -28,6 +29,10 @@ export const routes = [
 	{
 		path: '/profile',
 		element: <ProfilePage />,
+	},
+	{
+		path: '/following',
+		element: <FollowingPage />,
 	},
 	{
 		path: '*',
