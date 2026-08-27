@@ -34,4 +34,8 @@ export const queryKeys = {
 		all: () => ['notifications'] as const,
 		list: (userId: string) => ['notifications', userId, 'list'] as const,
 	},
+	leaderboard: {
+		all: () => ['leaderboard'] as const,
+		volume: () => ['leaderboard', 'volume'] as const,
+	},
 } as const;

@@ -27,6 +27,25 @@ export interface Course {
 	protocolFeeBps?: number;
 	/** Last up to 7 price history points in stroops, oldest to newest. */
 	priceHistory?: number[];
+	holderCount?: number;
+	holdersCount?: number;
+	holders?: number;
+	/** XLM currently held in the staking reward pool for this key. */
+	stakingPoolBalance?: number;
+	/** Number of keys staked across all holders. */
+	totalStaked?: number;
+	/** Protocol fees that flowed into the staking pool over the last month. */
+	recentFeeInflow?: number;
+	/** Editable creator metadata (falls back to title/description/thumbnail). */
+	name?: string;
+	bio?: string;
+	avatarUri?: string;
+	/** Fixed auction price in XLM, when an auction has been configured. */
+	auctionPrice?: number;
+	/** Number of keys allocated to the auction. */
+	auctionSupply?: number;
+	/** Keys sold through the auction so far. */
+	auctionSold?: number;
 }
 
 export type CourseSortOption =
@@ -66,7 +85,14 @@ export interface KeyHolderEntry {
 	id: string;
 	displayName: string;
 	walletAddress: string;
+	/** Total keys held by this holder, including any that are staked. */
 	keyCount: number;
+	/**
+	 * How many of `keyCount` are currently locked in the staking contract.
+	 * Absent on responses from the pre-staking holders endpoint; callers
+	 * should treat a missing value as `0`.
+	 */
+	stakedQuantity?: number;
 }
 
 /** Cursor-paginated response envelope for the key holders endpoint. */
