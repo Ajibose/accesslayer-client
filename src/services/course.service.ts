@@ -30,6 +30,12 @@ export interface Course {
 	holderCount?: number;
 	holdersCount?: number;
 	holders?: number;
+	/** XLM currently held in the staking reward pool for this key. */
+	stakingPoolBalance?: number;
+	/** Number of keys staked across all holders. */
+	totalStaked?: number;
+	/** Protocol fees that flowed into the staking pool over the last month. */
+	recentFeeInflow?: number;
 }
 
 export type CourseSortOption =
