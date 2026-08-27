@@ -69,7 +69,14 @@ export interface KeyHolderEntry {
 	id: string;
 	displayName: string;
 	walletAddress: string;
+	/** Total keys held by this holder, including any that are staked. */
 	keyCount: number;
+	/**
+	 * How many of `keyCount` are currently locked in the staking contract.
+	 * Absent on responses from the pre-staking holders endpoint; callers
+	 * should treat a missing value as `0`.
+	 */
+	stakedQuantity?: number;
 }
 
 /** Cursor-paginated response envelope for the key holders endpoint. */

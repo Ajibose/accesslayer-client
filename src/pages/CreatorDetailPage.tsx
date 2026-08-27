@@ -101,11 +101,11 @@ function CreatorDetailPageContent() {
 	}));
 
 	const defaultHolders = [
-		{ id: 'h1', displayName: 'Early Adopter', keyCount: 25, sharePercent: 25 },
-		{ id: 'h2', displayName: 'Alpha Collector', keyCount: 15, sharePercent: 15 },
-		{ id: 'h3', displayName: 'Key Holder 3', keyCount: 10, sharePercent: 10 },
-		{ id: 'h4', displayName: 'Key Holder 4', keyCount: 8, sharePercent: 8 },
-		{ id: 'h5', displayName: 'Key Holder 5', keyCount: 5, sharePercent: 5 },
+		{ id: 'h1', displayName: 'Early Adopter', keyCount: 25, stakedQuantity: 18 },
+		{ id: 'h2', displayName: 'Alpha Collector', keyCount: 15, stakedQuantity: 5 },
+		{ id: 'h3', displayName: 'Key Holder 3', keyCount: 10, stakedQuantity: 0 },
+		{ id: 'h4', displayName: 'Key Holder 4', keyCount: 8, stakedQuantity: 0 },
+		{ id: 'h5', displayName: 'Key Holder 5', keyCount: 5, stakedQuantity: 2 },
 	];
 
 	return (
