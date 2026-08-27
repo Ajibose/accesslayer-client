@@ -9,6 +9,7 @@ import CreatorProfileStaleIndicator from '@/components/common/CreatorProfileStal
 import CreatorProfileStatRow from '@/components/common/CreatorProfileStatRow';
 import { BondingCurveChart } from '@/components/common/BondingCurveChart';
 import KeyHolderList from '@/components/common/KeyHolderList';
+import StakingRewardsSection from '@/components/common/StakingRewardsSection';
 import { CreatorDashboardSkeleton } from '@/components/common/CreatorSkeleton';
 import { bpsToPercent, formatNumber } from '@/utils/numberFormat.utils';
 import { resolveCreatorKeyPriceStroops, formatDisplayKeyPrice } from '@/utils/keyPriceDisplay.utils';
@@ -101,12 +102,31 @@ function CreatorDetailPageContent() {
 	}));
 
 	const defaultHolders = [
-		{ id: 'h1', displayName: 'Early Adopter', keyCount: 25, sharePercent: 25 },
-		{ id: 'h2', displayName: 'Alpha Collector', keyCount: 15, sharePercent: 15 },
-		{ id: 'h3', displayName: 'Key Holder 3', keyCount: 10, sharePercent: 10 },
-		{ id: 'h4', displayName: 'Key Holder 4', keyCount: 8, sharePercent: 8 },
-		{ id: 'h5', displayName: 'Key Holder 5', keyCount: 5, sharePercent: 5 },
+		{ id: 'h1', displayName: 'Early Adopter', keyCount: 25, stakedQuantity: 18 },
+		{ id: 'h2', displayName: 'Alpha Collector', keyCount: 15, stakedQuantity: 5 },
+		{ id: 'h3', displayName: 'Key Holder 3', keyCount: 10, stakedQuantity: 0 },
+		{ id: 'h4', displayName: 'Key Holder 4', keyCount: 8, stakedQuantity: 0 },
+		{ id: 'h5', displayName: 'Key Holder 5', keyCount: 5, stakedQuantity: 2 },
 	];
+
+	const hasRealStakingData =
+		creator.stakingPoolBalance != null ||
+		creator.totalStaked != null ||
+		creator.recentFeeInflow != null;
+	const stakingStats = hasRealStakingData
+		? {
+				stakingPoolBalance: creator.stakingPoolBalance,
+				totalStaked: creator.totalStaked,
+				recentFeeInflow: creator.recentFeeInflow,
+			}
+		: {
+				// Demo values until the key detail API returns staking pool stats.
+				stakingPoolBalance: 4820,
+				totalStaked: creator.creatorShareSupply
+					? Math.floor(creator.creatorShareSupply / 4)
+					: 25,
+				recentFeeInflow: 62,
+			};
 
 	return (
 		<main className="min-h-screen bg-[#06111f] px-6 py-16 text-white md:px-12">
@@ -131,6 +151,12 @@ function CreatorDetailPageContent() {
 				<div data-testid="creator-stat-cards">
 					<CreatorProfileStatRow items={statItems} />
 				</div>
+
+				{/* Staking Rewards */}
+				<StakingRewardsSection
+					{...stakingStats}
+					isLoading={isLoading}
+				/>
 
 				{/* Price Chart */}
 				<div
