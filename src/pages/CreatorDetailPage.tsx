@@ -16,7 +16,7 @@ import KeyDetailPageErrorBoundary from '@/components/common/KeyDetailPageErrorBo
 import { ApiError } from '@/services/api.service';
 import { useNavigationTiming } from '@/hooks/useNavigationTiming';
 import { useKeyHolders } from '@/hooks/useKeyHolders';
-import KeyHolderList from '@/components/common/KeyHolderList';
+import CoCreatorSection from '@/components/creator/CoCreatorSection';
 
 function CreatorDetailPageContent() {
 	const { id } = useParams<{ id: string }>();
@@ -173,6 +173,15 @@ function CreatorDetailPageContent() {
 					</div>
 					<CreatorProfileInfoGrid items={feeItems} />
 				</div>
+
+				{/* Co-Creator Section */}
+				<CoCreatorSection
+					courseId={creator.id}
+					coCreatorAddress={creator.coCreatorAddress}
+					coCreatorSplitBps={creator.coCreatorSplitBps}
+					totalPaidToCoCreator={creator.totalPaidToCoCreator}
+					totalPaidToCreator={creator.totalPaidToCreator}
+				/>
 
 				{/* Activity Feed */}
 				<div className="rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 shadow-2xl backdrop-blur-md md:p-8">

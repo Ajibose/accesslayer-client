@@ -27,6 +27,13 @@ export interface Course {
 	protocolFeeBps?: number;
 	/** Last up to 7 price history points in stroops, oldest to newest. */
 	priceHistory?: number[];
+	holderCount?: number;
+	holdersCount?: number;
+	holders?: number;
+	coCreatorAddress?: string;
+	coCreatorSplitBps?: number;
+	totalPaidToCoCreator?: number;
+	totalPaidToCreator?: number;
 }
 
 export type CourseSortOption =
@@ -253,6 +260,24 @@ class CourseService extends BaseApiService {
 				return raw.items;
 			}
 			return [];
+		} catch (error) {
+			throw this.handleError(error);
+		}
+	}
+
+	// Set co-creator address and split — POST /courses/:id/co-creator
+	async setCoCreator(
+		courseId: string,
+		address: string,
+		splitBps: number
+	): Promise<Course> {
+		try {
+			const response = await this.api.post<APIResponse<Course>>(
+				`/courses/${courseId}/co-creator`,
+				{ address, splitBps }
+			);
+
+			return response.data.data;
 		} catch (error) {
 			throw this.handleError(error);
 		}
