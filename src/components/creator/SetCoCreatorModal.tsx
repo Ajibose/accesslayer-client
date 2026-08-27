@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { useSetCoCreator } from '@/hooks/useCreators';
+import { isValidStellarAddress, isValidBps } from '@/utils/coCreator.utils';
 
 interface SetCoCreatorModalProps {
 	courseId: string;
