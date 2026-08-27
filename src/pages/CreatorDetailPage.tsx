@@ -14,8 +14,8 @@ import { bpsToPercent, formatNumber } from '@/utils/numberFormat.utils';
 import { resolveCreatorKeyPriceStroops, formatDisplayKeyPrice } from '@/utils/keyPriceDisplay.utils';
 import KeyDetailPageErrorBoundary from '@/components/common/KeyDetailPageErrorBoundary';
 import { ApiError } from '@/services/api.service';
-import { useNavigationTiming } from '@/hooks/useNavigationTiming';
 import { useKeyHolders } from '@/hooks/useKeyHolders';
+import { useNavigationTiming } from '@/hooks/useNavigationTiming';
 
 function CreatorDetailPageContent() {
 	const { id } = useParams<{ id: string }>();

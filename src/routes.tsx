@@ -4,6 +4,7 @@ import CreatorDetailPage from './pages/CreatorDetailPage';
 import NotificationsPage from './pages/NotificationsPage';
 import LeaderboardPage from './pages/LeaderboardPage';
 import ProfilePage from './pages/ProfilePage';
+import FollowingPage from './pages/FollowingPage';
 
 export const routes = [
 	{
@@ -33,6 +34,10 @@ export const routes = [
 	{
 		path: '/profile',
 		element: <ProfilePage />,
+	},
+	{
+		path: '/following',
+		element: <FollowingPage />,
 	},
 	{
 		path: '*',
