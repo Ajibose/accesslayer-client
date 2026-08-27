@@ -36,6 +36,16 @@ export interface Course {
 	totalStaked?: number;
 	/** Protocol fees that flowed into the staking pool over the last month. */
 	recentFeeInflow?: number;
+	/** Editable creator metadata (falls back to title/description/thumbnail). */
+	name?: string;
+	bio?: string;
+	avatarUri?: string;
+	/** Fixed auction price in XLM, when an auction has been configured. */
+	auctionPrice?: number;
+	/** Number of keys allocated to the auction. */
+	auctionSupply?: number;
+	/** Keys sold through the auction so far. */
+	auctionSold?: number;
 }
 
 export type CourseSortOption =
