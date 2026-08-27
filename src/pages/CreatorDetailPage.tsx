@@ -1,4 +1,4 @@
-import { useParams } from 'react-router';
+import { Link, useParams } from 'react-router';
 import { useCreatorDetail } from '@/hooks/useCreators';
 import { useCreatorProfileStaleIndicator } from '@/hooks/useCreatorProfileStaleIndicator';
 import CreatorBreadcrumb from '@/components/common/CreatorBreadcrumb';
@@ -16,7 +16,10 @@ import KeyDetailPageErrorBoundary from '@/components/common/KeyDetailPageErrorBo
 import { ApiError } from '@/services/api.service';
 import { useNavigationTiming } from '@/hooks/useNavigationTiming';
 import { useKeyHolders } from '@/hooks/useKeyHolders';
+import { useProfileStore } from '@/hooks/useProfileStore';
+import { useWalletHoldings } from '@/hooks/useWallet';
 import CoCreatorSection from '@/components/creator/CoCreatorSection';
+import ShareTwitterButton from '@/components/common/ShareTwitterButton';
 
 function CreatorDetailPageContent() {
 	const { id } = useParams<{ id: string }>();
@@ -36,6 +39,13 @@ function CreatorDetailPageContent() {
 		fetchNextPage,
 	} = useKeyHolders(id || '');
 
+	// User holdings for Share to X button
+	const profile = useProfileStore(state => state.profile);
+	const userAddress = profile?.id;
+	const { data: holdings = [] } = useWalletHoldings(userAddress ?? '');
+	const userPosition = holdings.find(h => h.creatorId === (id || ''));
+	const holdingsCount = userPosition?.quantity ?? 0;
+
 	// Track stale data indicator
 	const { shouldShowBadge, handleRefetch } = useCreatorProfileStaleIndicator(
 		id || '',
@@ -53,12 +63,21 @@ function CreatorDetailPageContent() {
 		);
 	}
 
-	if (error) {
+	if (error || !creator) {
+		const is404 =
+			!creator || (error instanceof ApiError && error.status === 404);
+		if (is404) {
+			return (
+				<main className="flex min-h-screen flex-col items-center justify-center gap-6 bg-[#06111f] px-6 py-16 text-center text-white">
+					<h1 className="font-grotesque text-3xl font-black">Creator not found</h1>
+					<p className="text-white/70 font-jakarta">We couldn't find a creator with that ID.</p>
+					<Link to="/creators" className="text-amber-400 hover:underline">
+						Back to creators
+					</Link>
+				</main>
+			);
+		}
 		throw error;
-	}
-
-	if (!creator) {
-		throw new ApiError('Creator not found', 404);
 	}
 
 	const feeItems = [
@@ -131,6 +150,19 @@ function CreatorDetailPageContent() {
 				{/* 4 Stat Cards */}
 				<div data-testid="creator-stat-cards">
 					<CreatorProfileStatRow items={statItems} />
+				</div>
+
+				{/* Share to X Button (only visible for authenticated holders) */}
+				<div className="flex justify-end">
+					<ShareTwitterButton
+						creatorId={creator.id}
+						creatorName={creator.title}
+						priceXlm={formatDisplayKeyPrice(
+							resolveCreatorKeyPriceStroops(creator)
+						).replace(' XLM', '')}
+						userAddress={userAddress}
+						userHoldingsCount={holdingsCount}
+					/>
 				</div>
 
 				{/* Price Chart */}
