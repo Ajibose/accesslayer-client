@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import LockupCountdown from '@/components/common/LockupCountdown';
+import ReinvestDividendDialog from '@/components/common/ReinvestDividendDialog';
 import { computeRemainingLockupSeconds } from '@/utils/lockupCountdown.utils';
 import { formatNumber } from '@/utils/numberFormat.utils';
 import { formatDisplayKeyPrice, resolveCreatorKeyPriceStroops } from '@/utils/keyPriceDisplay.utils';
+import { hasUnclaimedDividend, xlmToStroops } from '@/utils/reinvestDividend.utils';
+import { TrendingUp } from 'lucide-react';
 import type { HeldKeyPosition } from '@/utils/portfolioValue.utils';
 import type { Course } from '@/services/course.service';
 import { cn } from '@/lib/utils';
@@ -13,7 +16,9 @@ export interface PortfolioHoldingRowProps {
 	creator?: Course;
 	onBuy?: (creatorId: string) => void;
 	onSell?: (creatorId: string) => void;
+	onReinvest?: (creatorId: string) => Promise<void> | void;
 	isSubmitting?: boolean;
+	isReinvesting?: boolean;
 	isNetworkMismatch?: boolean;
 }
 
@@ -22,13 +27,26 @@ export const PortfolioHoldingRow: React.FC<PortfolioHoldingRowProps> = ({
 	creator,
 	onBuy,
 	onSell,
+	onReinvest,
 	isSubmitting = false,
+	isReinvesting = false,
 	isNetworkMismatch = false,
 }) => {
 	const initialRemaining = computeRemainingLockupSeconds(position.last_buy_timestamp);
 	const [isLocked, setIsLocked] = useState(initialRemaining > 0);
+	const [reinvestOpen, setReinvestOpen] = useState(false);
+
+	const hasDividends = hasUnclaimedDividend(position.unclaimedDividend);
+	const keyPriceStroops = resolveCreatorKeyPriceStroops(position);
+
+	const handleConfirmReinvest = async () => {
+		if (!onReinvest) return;
+		await onReinvest(position.creatorId);
+		setReinvestOpen(false);
+	};
 
 	return (
+		<>
 		<div
 			className={cn(
 				'flex flex-col gap-3 rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition-opacity sm:flex-row sm:items-center sm:justify-between',
@@ -56,6 +74,18 @@ export const PortfolioHoldingRow: React.FC<PortfolioHoldingRowProps> = ({
 							? 'Price stale'
 							: formatDisplayKeyPrice(resolveCreatorKeyPriceStroops(position))}
 				</div>
+				{hasDividends && (
+					<span
+						className="mt-2 inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2 py-0.5 text-[0.65rem] font-semibold text-emerald-400"
+						title="Unclaimed dividend balance available to reinvest"
+						data-testid="unclaimed-dividend-badge"
+					>
+						<TrendingUp className="size-3" aria-hidden="true" />
+						<span>
+							{formatDisplayKeyPrice(xlmToStroops(position.unclaimedDividend))} unclaimed
+						</span>
+					</span>
+				)}
 			</div>
 
 			<div className="flex items-center gap-3 shrink-0">
@@ -65,6 +95,18 @@ export const PortfolioHoldingRow: React.FC<PortfolioHoldingRowProps> = ({
 				/>
 
 				<div className="flex items-center gap-2">
+					{onReinvest && hasDividends && (
+						<Button
+							size="sm"
+							variant="outline"
+							className="rounded-xl"
+							onClick={() => setReinvestOpen(true)}
+							disabled={isNetworkMismatch || isSubmitting || isReinvesting}
+							data-testid="holding-reinvest-button"
+						>
+							Reinvest
+						</Button>
+					)}
 					{onBuy && (
 						<Button
 							size="sm"
@@ -91,6 +133,19 @@ export const PortfolioHoldingRow: React.FC<PortfolioHoldingRowProps> = ({
 				</div>
 			</div>
 		</div>
+
+		{onReinvest && hasDividends && position.unclaimedDividend != null && (
+			<ReinvestDividendDialog
+				open={reinvestOpen}
+				creatorName={creator?.title ?? 'this creator'}
+				unclaimedDividend={position.unclaimedDividend}
+				keyPriceStroops={keyPriceStroops}
+				onOpenChange={setReinvestOpen}
+				onConfirm={handleConfirmReinvest}
+				isSubmitting={isReinvesting}
+			/>
+		)}
+		</>
 	);
 };
 
