@@ -1,5 +1,6 @@
 import HomePage from './pages/HomePage';
 import NotFoundPage from './pages/NotFoundPage';
+import AdminDashboardPage from './pages/AdminDashboardPage';
 import CreatorDetailPage from './pages/CreatorDetailPage';
 import CreatorDashboardPage from './pages/CreatorDashboardPage';
 import NotificationsPage from './pages/NotificationsPage';
@@ -47,6 +48,10 @@ export const routes = [
 	{
 		path: '/following',
 		element: <FollowingPage />,
+	},
+	{
+		path: '/admin/dashboard',
+		element: <AdminDashboardPage />,
 	},
 	{
 		path: '*',

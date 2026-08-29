@@ -38,4 +38,7 @@ export const queryKeys = {
 		all: () => ['leaderboard'] as const,
 		volume: () => ['leaderboard', 'volume'] as const,
 	},
+	admin: {
+		oracleCallers: () => ['admin', 'oracle', 'callers'] as const,
+	},
 } as const;
