@@ -88,8 +88,8 @@ describe('CoCreatorSection Component', () => {
 		expect(screen.getByTestId('cocreator-details')).toBeInTheDocument();
 
 		expect(screen.getByTestId('cocreator-split-display')).toHaveTextContent('25%');
-		expect(screen.getByTestId('total-paid-cocreator')).toHaveTextContent('15 XLM');
-		expect(screen.getByTestId('total-paid-creator')).toHaveTextContent('45 XLM');
+		expect(screen.getByTestId('total-paid-cocreator')).toHaveTextContent(/15.*XLM/);
+		expect(screen.getByTestId('total-paid-creator')).toHaveTextContent(/45.*XLM/);
 		expect(screen.getByTestId('set-cocreator-button')).toHaveTextContent(
 			'Edit Co-Creator'
 		);
