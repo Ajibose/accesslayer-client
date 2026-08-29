@@ -215,9 +215,8 @@ export function useTradeMutation(address: string) {
 }
 
 export interface BatchOrder {
-	creatorId: string;
+	address: string;
 	quantity: number;
-	priceStroops: number;
 	ref?: string | null;
 }
 
