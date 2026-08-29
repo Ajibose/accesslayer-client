@@ -11,6 +11,12 @@ export interface HeldKeyPosition extends CreatorKeyPriceFields {
 	isPriceStale?: boolean;
 	pending?: boolean;
 	last_buy_timestamp?: number | string | null;
+	/**
+	 * Unclaimed dividends (in XLM) accrued on this held position. When greater
+	 * than zero the holding row surfaces a badge and a Reinvest action that
+	 * compounds the balance back into more creator keys.
+	 */
+	unclaimedDividend?: number | null;
 }
 
 export type PortfolioValueStatus = 'ready' | 'loading' | 'unavailable';

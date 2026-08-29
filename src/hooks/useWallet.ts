@@ -221,6 +221,109 @@ export interface BatchOrder {
 	ref?: string | null;
 }
 
+export interface ReinvestDividendVariables {
+	/** The creator key whose dividends are being reinvested. */
+	keyId: string;
+	/** Unclaimed dividend amount in XLM being compounded. */
+	amount: number;
+	/** Number of whole keys the reinvestment buys (used for optimistic update). */
+	keys: number;
+}
+
+export function useReinvestDividendMutation(address: string) {
+	const queryClient = useQueryClient();
+
+	const mutation = useMutation({
+		mutationKey: ['reinvest-dividend', address],
+		mutationFn: async (variables: ReinvestDividendVariables) => {
+			// In production this submits the on-chain `reinvest_dividend`
+			// contract function with the holder's `key_id` (`variables.keyId`).
+			// Here we simulate latency and accept the payload.
+			void variables;
+			await new Promise<void>(resolve => window.setTimeout(resolve, 900));
+			return { success: true as const };
+		},
+		onMutate: async ({
+			keyId,
+			keys,
+			amount,
+		}: ReinvestDividendVariables) => {
+			const queryKey = queryKeys.wallet.holdings(address);
+
+			await queryClient.cancelQueries({ queryKey });
+
+			const previousHoldings =
+				queryClient.getQueryData<HeldKeyPosition[]>(queryKey) ?? [];
+
+			queryClient.setQueryData<HeldKeyPosition[]>(queryKey, (old = []) =>
+				old.map(h => {
+					if (h.creatorId !== keyId) return h;
+					return {
+						...h,
+						quantity: (h.quantity ?? 0) + keys,
+						pending: true,
+						// Optimistically clear the compounded dividend.
+						unclaimedDividend: Math.max(
+							0,
+							(h.unclaimedDividend ?? 0) - amount
+						),
+					};
+				})
+			);
+
+			return { previousHoldings };
+		},
+		onError: (error, _variables, context) => {
+			const holdingsKey = queryKeys.wallet.holdings(address);
+
+			if (context?.previousHoldings) {
+				queryClient.setQueryData(holdingsKey, context.previousHoldings);
+			} else if (process.env.NODE_ENV !== 'test') {
+				console.warn('[optimistic-rollback]', {
+					cache_key: JSON.stringify(holdingsKey),
+					action: 'reinvest_dividend',
+					reason: 'snapshot_missing',
+					failed_at: new Date().toISOString(),
+				});
+			}
+
+			showToast.error(getSignatureErrorMessage(error));
+		},
+		onSuccess: (_data, variables) => {
+			// Clear the pending flag once the reinvestment settles.
+			queryClient.setQueryData<HeldKeyPosition[]>(
+				queryKeys.wallet.holdings(address),
+				(old = []) =>
+					old.map(h =>
+						h.creatorId === variables.keyId
+							? { ...h, pending: false }
+							: h
+					)
+			);
+		},
+		onSettled: (_data, _error, variables) => {
+			// Reinvesting converts dividends back into keys, which changes the
+			// held quantity and ultimately supply/price on the marketplace.
+			queryClient.invalidateQueries({
+				queryKey: queryKeys.wallet.holdings(address),
+			});
+
+			if (process.env.NODE_ENV !== 'test') {
+				console.debug('[cache-invalidation]', {
+					invalidated_keys: [JSON.stringify(
+						queryKeys.wallet.holdings(address)
+					)],
+					trigger: 'reinvest_dividend',
+					creator_id: variables.keyId,
+					invalidated_at: new Date().toISOString(),
+				});
+			}
+		},
+	});
+
+	return mutation;
+}
+
 export function useBatchBuyMutation(address?: string) {
 	const queryClient = useQueryClient();
 
