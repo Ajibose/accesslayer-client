@@ -4,6 +4,7 @@ import type { HeldKeyPosition } from '@/utils/portfolioValue.utils';
 import showToast from '@/utils/toast.util';
 import { getSignatureErrorMessage } from '@/utils/errorHandling.utils';
 import { fetchWalletActivityPage } from '@/services/walletActivity.service';
+import { fetchTradeHistoryPage } from '@/services/tradeHistory.service';
 
 export function useWalletHoldings(address: string) {
 	return useQuery<HeldKeyPosition[]>({
@@ -29,6 +30,24 @@ export function useWalletActivity(address: string) {
 			fetchWalletActivityPage(address, pageParam ?? 1),
 		initialPageParam: 1,
 		getNextPageParam: lastPage => lastPage.nextPage,
+		enabled: !!address,
+	});
+}
+
+/**
+ * Cursor-paginated trade history for a wallet.
+ *
+ * #784 — fetches GET /users/:wallet/trades with `cursor` pagination.
+ * Each page is appended to `data.pages`; the "Load More" button
+ * calls `fetchNextPage()` when `hasNextPage` is true.
+ */
+export function useTradeHistory(address: string) {
+	return useInfiniteQuery({
+		queryKey: queryKeys.wallet.tradeHistory(address),
+		queryFn: ({ pageParam }) =>
+			fetchTradeHistoryPage(address, pageParam as string | null | undefined),
+		initialPageParam: null as string | null,
+		getNextPageParam: lastPage => lastPage.nextCursor ?? undefined,
 		enabled: !!address,
 	});
 }
