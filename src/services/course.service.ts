@@ -46,10 +46,11 @@ export interface Course {
 	auctionSupply?: number;
 	/** Keys sold through the auction so far. */
 	auctionSold?: number;
-	coCreatorAddress?: string;
-	coCreatorSplitBps?: number;
-	totalPaidToCoCreator?: number;
-	totalPaidToCreator?: number;
+	/**
+	 * Early-sell penalty in basis points (0–2000 = 0%–20%).
+	 * Applied to sells within the first 7 days after key creation.
+	 */
+	launchPenaltyBps?: number;
 }
 
 export type CourseSortOption =
