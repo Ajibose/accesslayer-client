@@ -99,7 +99,17 @@ export function useTradeMutation(address: string) {
 				];
 			});
 
-			return { previousHoldings };
+			// Optimistic holder count increment (#780)
+			const holderCountKey = ['creator', creatorId, 'holderCount'];
+			await queryClient.cancelQueries({ queryKey: holderCountKey });
+			const previousHolderCount =
+				queryClient.getQueryData<number>(holderCountKey) ?? 0;
+			queryClient.setQueryData<number>(
+				holderCountKey,
+				(oldCount = 0) => oldCount + 1
+			);
+
+			return { previousHoldings, previousHolderCount };
 		},
 		onError: (error, variables, context) => {
 			const holdingsKey = queryKeys.wallet.holdings(address);
