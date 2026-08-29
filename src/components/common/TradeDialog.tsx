@@ -18,9 +18,12 @@ import {
 import PercentageBadge from '@/components/common/PercentageBadge';
 import NetworkFeeHint from '@/components/common/NetworkFeeHint';
 import BuyFeeBreakdown from '@/components/common/BuyFeeBreakdown';
+import SellFeeBreakdown from '@/components/common/SellFeeBreakdown';
+import LaunchPenaltyWarning from '@/components/common/LaunchPenaltyWarning';
 import { TRADE_FEE_ESTIMATE, FEE_BOUNDS } from '@/constants/fees';
 import { formatTransactionFeeDisplay } from '@/utils/transactionFee.utils';
 import { clampBuyQuantity } from '@/utils/buyQuantity';
+import { calculateLaunchPenalty } from '@/utils/launchPenalty.utils';
 import {
 	fetchPricePreview,
 	type FeeBreakdown,
@@ -41,6 +44,12 @@ export interface TradeDialogProps {
 	protocolFeeBps?: number;
 	/** Creator fee in basis points for fee preview (defaults to FEE_BOUNDS.DEFAULT_FEE_BPS) */
 	creatorFeeBps?: number;
+	/** Ledger sequence the key was created at, from the key detail API. */
+	createdAtLedger?: number | null;
+	/** Current network ledger sequence, used to evaluate the 7-day launch window. */
+	currentLedger?: number | null;
+	/** Early-sell penalty in basis points, from the key detail API. */
+	launchPenaltyBps?: number | null;
 	onOpenChange: (open: boolean) => void;
 	onConfirm: (
 		amount: number,
@@ -58,6 +67,9 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 	currentSupply,
 	protocolFeeBps = FEE_BOUNDS.DEFAULT_FEE_BPS,
 	creatorFeeBps = FEE_BOUNDS.DEFAULT_FEE_BPS,
+	createdAtLedger,
+	currentLedger,
+	launchPenaltyBps,
 	onOpenChange,
 	onConfirm,
 	isSubmitting = false,
@@ -140,6 +152,17 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 		}
 		return estimateSellProceeds(keyPriceStroops, currentSupply, parsedAmount);
 	}, [side, keyPriceStroops, currentSupply, parsedAmount]);
+
+	const launchPenalty = useMemo(
+		() =>
+			calculateLaunchPenalty(
+				estimatedProceedsStroops,
+				createdAtLedger,
+				currentLedger,
+				launchPenaltyBps
+			),
+		[estimatedProceedsStroops, createdAtLedger, currentLedger, launchPenaltyBps]
+	);
 
 	const estimatedTotalStroops = useMemo(() => {
 		if (
@@ -290,6 +313,13 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 					</p>
 				)}
 
+				{side === 'sell' && (
+					<LaunchPenaltyWarning
+						visible={launchPenalty.applies}
+						penaltyBps={launchPenalty.penaltyBps}
+					/>
+				)}
+
 				<div className="space-y-2">
 					<div className="text-sm text-white/70">Amount</div>
 					<input
@@ -373,18 +403,10 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 						</div>
 					)}
 					{side === 'sell' && (
-						<div className="text-xs text-white/45 mt-2">
-							{estimatedProceedsStroops != null ? (
-								<>
-									Estimated proceeds (approximate):{' '}
-									<span className="font-semibold text-amber-300/90 tabular-nums">
-										{formatDisplayKeyPrice(estimatedProceedsStroops)}
-									</span>
-								</>
-							) : (
-								<>Estimated proceeds unavailable</>
-							)}
-						</div>
+						<SellFeeBreakdown
+							grossProceedsStroops={estimatedProceedsStroops}
+							launchPenalty={launchPenalty}
+						/>
 					)}
 				</div>
 
