@@ -29,6 +29,8 @@ export const queryKeys = {
 	wallet: {
 		holdings: (address: string) => ['wallet', address, 'holdings'] as const,
 		activity: (address: string) => ['wallet', address, 'activity'] as const,
+		tradeHistory: (address: string) =>
+			['wallet', address, 'tradeHistory'] as const,
 	},
 	notifications: {
 		all: () => ['notifications'] as const,
