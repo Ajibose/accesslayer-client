@@ -51,6 +51,14 @@ export interface Course {
 	 * Applied to sells within the first 7 days after key creation.
 	 */
 	launchPenaltyBps?: number;
+	/** Optional co-creator wallet configured for this creator key. */
+	coCreatorAddress?: string;
+	/** Co-creator revenue share in basis points. */
+	coCreatorSplitBps?: number;
+	/** Lifetime payout to the co-creator, expressed in stroops. */
+	totalPaidToCoCreator?: number;
+	/** Lifetime payout to the primary creator, expressed in stroops. */
+	totalPaidToCreator?: number;
 }
 
 export type CourseSortOption =
