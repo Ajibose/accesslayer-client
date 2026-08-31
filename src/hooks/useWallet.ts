@@ -59,6 +59,14 @@ export interface TradeVariables {
 	price: number | null | undefined;
 	/** Optional referral wallet address forwarded from a referral link */
 	ref?: string | null;
+	/**
+	 * Slippage-tolerance bound (#872) forwarded to the on-chain contract call.
+	 * Buys pass `maxPriceStroops` (reject if price rises above this); sells
+	 * pass `minPriceStroops` (reject if price falls below this). Only the
+	 * bound relevant to the trade direction is expected to be set.
+	 */
+	maxPriceStroops?: number | null;
+	minPriceStroops?: number | null;
 }
 
 export function useTradeMutation(address: string) {
@@ -67,9 +75,12 @@ export function useTradeMutation(address: string) {
 	const mutation = useMutation({
 		mutationKey: ['trade', address],
 		mutationFn: async (variables: TradeVariables) => {
-			// In production this would call the on-chain contract; here we
-			// simulate latency. The `ref` field is accepted and can be used
-			// by instrumentation or contract calls.
+			// In production this would call the on-chain contract, passing
+			// `maxPriceStroops`/`minPriceStroops` as the contract's
+			// `max_price`/`min_price` slippage-protection arguments so the
+			// chain reverts the trade if the executed price moves against the
+			// user beyond their selected tolerance (#872). The `ref` field is
+			// accepted and can be used by instrumentation or contract calls.
 			void variables;
 			await new Promise<void>(resolve => window.setTimeout(resolve, 900));
 			return { success: true as const };

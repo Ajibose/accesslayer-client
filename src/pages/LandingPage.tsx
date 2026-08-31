@@ -40,6 +40,8 @@ import CreatorProfileErrorState from '@/components/common/CreatorProfileErrorSta
 import TransactionRetryNotice from '@/components/common/TransactionRetryNotice';
 import EmptyTransactionTimelineState from '@/components/common/EmptyTransactionTimelineState';
 import TradeDialog, { type TradeSide } from '@/components/common/TradeDialog';
+import type { FeeBreakdown } from '@/utils/pricePreview.utils';
+import type { SlippageBounds } from '@/utils/slippageTolerance.utils';
 import TradePanelErrorBoundary from '@/components/common/TradePanelErrorBoundary';
 import NetworkMismatchBanner from '@/components/common/NetworkMismatchBanner';
 import StellarConnectionQualityBadge from '@/components/common/StellarConnectionQualityBadge';
@@ -903,7 +905,11 @@ function LandingPage() {
 		}
 	};
 
-	const handleConfirmTrade = async (amount: number) => {
+	const handleConfirmTrade = async (
+		amount: number,
+		_pricePreview?: FeeBreakdown | null,
+		slippage?: SlippageBounds | null
+	) => {
 		setTradeSubmitting(true);
 		try {
 			if (tradeSide === 'buy') {
@@ -919,6 +925,7 @@ function LandingPage() {
 					priceStroops: resolveCreatorKeyPriceStroops(featuredCreator),
 					price: featuredCreator?.price,
 					ref: urlRef,
+					maxPriceStroops: slippage?.maxPriceStroops ?? null,
 				});
 				setFeaturedHoldings(current => current + amount);
 				showToast.transactionSuccess(
@@ -929,9 +936,14 @@ function LandingPage() {
 				showToast.loading(
 					`Submitting sell for ${amount} key${amount === 1 ? '' : 's'}...`
 				);
-				await new Promise<void>(resolve => window.setTimeout(resolve, 900));
+				await tradeMutation.mutateAsync({
+					creatorId: '1',
+					amount: -amount,
+					priceStroops: resolveCreatorKeyPriceStroops(featuredCreator),
+					price: featuredCreator?.price,
+					minPriceStroops: slippage?.minPriceStroops ?? null,
+				});
 				setFeaturedHoldings(current => Math.max(0, current - amount));
-				await new Promise<void>(resolve => window.setTimeout(resolve, 250));
 				showToast.transactionSuccess(
 					'Trade confirmed',
 					`Sold ${formatNumber(amount)} key${amount === 1 ? '' : 's'} from ${FEATURED_CREATOR_NAME}`
