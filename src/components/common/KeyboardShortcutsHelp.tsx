@@ -16,23 +16,27 @@ interface KeyboardShortcutsHelpProps {
 
 /**
  * Group shortcuts by category for display.
- * Returns a Map of category → shortcuts.
  */
 function groupByCategory(
-	shortcuts: readonly {
-		readonly keys: readonly string[];
-		readonly description: string;
-		readonly category: string;
-	}[]
-): Map<string, typeof shortcuts> {
-	const groups = new Map<string, typeof shortcuts>();
+	shortcuts: readonly TradeShortcut[]
+): Map<string, TradeShortcut[]> {
+	const groups = new Map<string, TradeShortcut[]>();
 	for (const shortcut of shortcuts) {
-		const existing = groups.get(shortcut.category) ?? [];
-		existing.push(shortcut);
-		groups.set(shortcut.category, existing);
+		const existing = groups.get(shortcut.category);
+		if (existing) {
+			existing.push(shortcut);
+		} else {
+			groups.set(shortcut.category, [shortcut]);
+		}
 	}
 	return groups;
 }
+
+type TradeShortcut = {
+	readonly keys: readonly string[];
+	readonly description: string;
+	readonly category: string;
+};
 
 const KeyboardShortcutsHelp: React.FC<KeyboardShortcutsHelpProps> = ({
 	open,
