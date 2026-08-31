@@ -56,7 +56,7 @@ const KeyboardShortcutsHelp: React.FC<KeyboardShortcutsHelpProps> = ({
 					</DialogTitle>
 					<DialogDescription>
 						Keyboard shortcuts for power users. Press{' '}
-						<Kbd className="mx-0.5">?</kbd> anytime to toggle this panel.
+						<Kbd className="mx-0.5">?</Kbd> anytime to toggle this panel.
 					</DialogDescription>
 				</DialogHeader>
 
