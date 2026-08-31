@@ -61,6 +61,20 @@ export interface Course {
 	totalPaidToCoCreator?: number;
 	/** Lifetime payout to the primary creator, expressed in stroops. */
 	totalPaidToCreator?: number;
+	/**
+	 * Fallback, creator-wide buy-cooldown expiry (#873) used when no
+	 * per-user `nextBuyAllowedAt` is present on the caller's held position.
+	 * Timestamp after which buys are allowed again.
+	 */
+	nextBuyAllowedAt?: number | string | null;
+	/**
+	 * Whether this key has been marked deprecated (#871) — e.g. the creator
+	 * left the platform or the key was superseded. Deprecated keys can no
+	 * longer be bought/sold; holders can redeem their position instead.
+	 */
+	deprecated?: boolean;
+	/** Optional human-readable reason surfaced in the deprecation notice. */
+	deprecationReason?: string | null;
 }
 
 export type CourseSortOption =
