@@ -51,6 +51,7 @@ import {
 	useTradeMutation,
 	useWalletHoldings,
 	useReinvestDividendMutation,
+	useRedeemDeprecatedKeyMutation,
 } from '@/hooks/useWallet';
 import showToast from '@/utils/toast.util';
 import { getSignatureErrorMessage } from '@/utils/errorHandling.utils';
@@ -806,6 +807,7 @@ function LandingPage() {
 
 	const tradeMutation = useTradeMutation(activeWalletAddress);
 	const reinvestMutation = useReinvestDividendMutation(activeWalletAddress);
+	const redeemMutation = useRedeemDeprecatedKeyMutation(activeWalletAddress);
 	const { data: cachedHoldings = [] } = useWalletHoldings(activeWalletAddress);
 
 	// Merged: keep total-value sorting (feature/holdings-sorting-tests) while
@@ -1617,8 +1619,21 @@ function LandingPage() {
 														`Reinvested ${formatDisplayKeyPrice(estimate.unclaimedStroops)} — received ${formatNumber(estimate.wholeKeys)} keys`
 													);
 												}}
+												onRedeem={async creatorId => {
+													const pos = heldKeyPositions.find(
+														p => p.creatorId === creatorId
+													);
+													await redeemMutation.mutateAsync({
+														creatorId,
+														quantity: pos?.quantity ?? 0,
+													});
+													showToast.success(
+														`Redeemed your ${creator?.title ?? 'deprecated'} key position`
+													);
+												}}
 												isSubmitting={tradeSubmitting}
 												isReinvesting={reinvestMutation.isPending}
+												isRedeeming={redeemMutation.isPending}
 												isNetworkMismatch={isNetworkMismatch}
 											/>
 										);
