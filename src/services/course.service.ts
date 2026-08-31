@@ -327,6 +327,22 @@ class CourseService extends BaseApiService {
 			throw this.handleError(error);
 		}
 	}
+
+	// Simulate buy - GET /keys/:keyId/simulate?quantity=N (#886, #887)
+	async simulateBuy(
+		keyId: string,
+		quantity: number
+	): Promise<Record<string, number>> {
+		try {
+			const response = await this.api.get<APIResponse<Record<string, number>>>(
+				`/keys/${keyId}/simulate`,
+				{ params: { quantity } }
+			);
+			return response.data.data;
+		} catch (error) {
+			throw this.handleError(error);
+		}
+	}
 }
 
 export const courseService = new CourseService();
