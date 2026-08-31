@@ -71,7 +71,7 @@ const TradeShortcutHints: React.FC<TradeShortcutHintsProps> = ({
 				{side === 'buy' ? 'Buy' : 'Sell'} shortcuts:
 			</span>
 			<span className="flex items-center gap-1.5">
-				<Kbd>Enter</kbd>
+				<Kbd>Enter</Kbd>
 				<span className="text-white/40">confirm</span>
 			</span>
 			<span className="text-white/20">·</span>
