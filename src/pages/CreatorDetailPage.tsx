@@ -9,6 +9,7 @@ import CreatorActivityFeed from '@/components/common/CreatorActivityFeed';
 import CreatorProfileStaleIndicator from '@/components/common/CreatorProfileStaleIndicator';
 import CreatorProfileStatRow from '@/components/common/CreatorProfileStatRow';
 import { BondingCurveChart } from '@/components/common/BondingCurveChart';
+import KeySimulationTool from '@/components/common/KeySimulationTool';
 import KeyHolderList from '@/components/common/KeyHolderList';
 import HolderConcentrationChart from '@/components/common/HolderConcentrationChart';
 import StakingRewardsSection from '@/components/common/StakingRewardsSection';
@@ -221,6 +222,13 @@ function CreatorDetailPageContent() {
 						height={300}
 					/>
 				</div>
+
+				{/* Buy Simulation Tool */}
+				<KeySimulationTool
+					currentSupply={creator.creatorShareSupply ?? 100}
+					protocolFeeBps={creator.protocolFeeBps}
+					creatorFeeBps={creator.creatorFeeBps}
+				/>
 
 				{/* Holder Concentration */}
 				<div
