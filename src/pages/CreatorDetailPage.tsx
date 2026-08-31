@@ -21,8 +21,11 @@ import { useProfileStore } from '@/hooks/useProfileStore';
 import { useWalletHoldings } from '@/hooks/useWallet';
 import CoCreatorSection from '@/components/creator/CoCreatorSection';
 import ShareTwitterButton from '@/components/common/ShareTwitterButton';
+import { usePurchaseConfetti } from '@/hooks/usePurchaseConfetti';
 
 function CreatorDetailPageContent() {
+	usePurchaseConfetti();
+
 	const { id } = useParams<{ id: string }>();
 	const {
 		data: creator,
