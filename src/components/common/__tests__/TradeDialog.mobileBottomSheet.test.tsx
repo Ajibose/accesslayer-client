@@ -238,7 +238,11 @@ describe('TradeDialog mobile slide-up sheet (#865)', () => {
 			const confirmBtn = screen.getByTestId('trade-dialog-confirm');
 			await user.click(confirmBtn);
 
-			expect(onConfirm).toHaveBeenCalledWith(3, null);
+			expect(onConfirm).toHaveBeenCalledWith(
+				3,
+				null,
+				expect.objectContaining({ toleranceZPercent: 1 })
+			);
 		});
 
 		it('allows cancelling trade via cancel button on mobile', async () => {
