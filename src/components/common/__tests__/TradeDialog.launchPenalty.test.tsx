@@ -146,6 +146,13 @@ describe('TradeDialog – launch penalty warning (#825)', () => {
 		fireEvent.change(input, { target: { value: '2' } });
 		fireEvent.click(screen.getByTestId('trade-dialog-confirm'));
 
-		expect(onConfirm).toHaveBeenCalledWith(2, null);
+		// #872 added a third `slippage` argument (the computed min/max price
+		// bound); this test only asserts on the amount and price-preview
+		// arguments it was written to cover.
+		expect(onConfirm).toHaveBeenCalledWith(
+			2,
+			null,
+			expect.objectContaining({ minPriceStroops: expect.any(Number) })
+		);
 	});
 });
