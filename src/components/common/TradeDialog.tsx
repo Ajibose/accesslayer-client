@@ -20,6 +20,7 @@ import NetworkFeeHint from '@/components/common/NetworkFeeHint';
 import BuyFeeBreakdown from '@/components/common/BuyFeeBreakdown';
 import SellFeeBreakdown from '@/components/common/SellFeeBreakdown';
 import LaunchPenaltyWarning from '@/components/common/LaunchPenaltyWarning';
+import SlippageToleranceSelector from '@/components/common/SlippageToleranceSelector';
 import { TRADE_FEE_ESTIMATE, FEE_BOUNDS } from '@/constants/fees';
 import { formatTransactionFeeDisplay } from '@/utils/transactionFee.utils';
 import { clampBuyQuantity } from '@/utils/buyQuantity';
@@ -28,6 +29,11 @@ import {
 	fetchPricePreview,
 	type FeeBreakdown,
 } from '@/utils/pricePreview.utils';
+import {
+	DEFAULT_SLIPPAGE_TOLERANCE_PERCENT,
+	computeSlippageBounds,
+	type SlippageBounds,
+} from '@/utils/slippageTolerance.utils';
 
 export type TradeSide = 'buy' | 'sell';
 
@@ -50,10 +56,13 @@ export interface TradeDialogProps {
 	currentLedger?: number | null;
 	/** Early-sell penalty in basis points, from the key detail API. */
 	launchPenaltyBps?: number | null;
+	/** Max buy quantity allowed per transaction; null means no limit. */
+	maxBuyQuantity?: number | null;
 	onOpenChange: (open: boolean) => void;
 	onConfirm: (
 		amount: number,
-		pricePreview?: FeeBreakdown | null
+		pricePreview?: FeeBreakdown | null,
+		slippage?: SlippageBounds | null
 	) => Promise<void> | void;
 	isSubmitting?: boolean;
 }
@@ -70,6 +79,7 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 	createdAtLedger,
 	currentLedger,
 	launchPenaltyBps,
+	maxBuyQuantity = null,
 	onOpenChange,
 	onConfirm,
 	isSubmitting = false,
@@ -79,6 +89,9 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 	const [pricePreview, setPricePreview] = useState<FeeBreakdown | null>(null);
 	const [previewLoading, setPreviewLoading] = useState(false);
 	const [previewError, setPreviewError] = useState<string | null>(null);
+	const [slippageTolerancePercent, setSlippageTolerancePercent] = useState(
+		DEFAULT_SLIPPAGE_TOLERANCE_PERCENT
+	);
 	const amountInputRef = useRef<HTMLInputElement | null>(null);
 	const pricePreviewFailureLogged = useRef(false);
 	const previewAbortControllerRef = useRef<AbortController | null>(null);
@@ -100,6 +113,7 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 			setPricePreview(null);
 			setPreviewLoading(false);
 			setPreviewError(null);
+			setSlippageTolerancePercent(DEFAULT_SLIPPAGE_TOLERANCE_PERCENT);
 			pricePreviewFailureLogged.current = false;
 		}
 	}, [open]);
@@ -127,10 +141,17 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 		if (!Number.isFinite(parsedAmount))
 			return 'Amount must be a valid number.';
 		if (parsedAmount <= 0) return 'Amount must be greater than zero.';
+		if (
+			side === 'buy' &&
+			maxBuyQuantity != null &&
+			parsedAmount > maxBuyQuantity
+		) {
+			return `Maximum ${formatNumber(maxBuyQuantity)} keys per transaction for this key`;
+		}
 		if (side === 'sell' && parsedAmount > availableHoldings)
 			return `You can't sell more than your holdings (${formatNumber(availableHoldings)} keys).`;
 		return null;
-	}, [amountText, parsedAmount, side, availableHoldings]);
+	}, [amountText, parsedAmount, side, maxBuyQuantity, availableHoldings]);
 
 	const amountValid = validationError === null;
 	const showError = touched && validationError !== null;
@@ -175,6 +196,27 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 		if (keyPriceStroops == null) return null;
 		return keyPriceStroops * parsedAmount;
 	}, [side, keyPriceStroops, parsedAmount]);
+
+	// The reference price slippage bounds are computed from: the fee-inclusive
+	// buy total when available, falling back to the raw estimated total, and
+	// the estimated sell proceeds on the sell side. This mirrors the same
+	// price shown to the user just above the slippage selector, so the
+	// max/min bound the contract enforces always matches what was displayed.
+	const slippageReferencePriceStroops = useMemo(() => {
+		if (side === 'buy') {
+			return pricePreview?.totalCostStroops ?? estimatedTotalStroops ?? null;
+		}
+		return estimatedProceedsStroops;
+	}, [side, pricePreview, estimatedTotalStroops, estimatedProceedsStroops]);
+
+	const slippageBounds = useMemo<SlippageBounds | null>(() => {
+		if (slippageReferencePriceStroops == null) return null;
+		return computeSlippageBounds(
+			side,
+			slippageReferencePriceStroops,
+			slippageTolerancePercent
+		);
+	}, [side, slippageReferencePriceStroops, slippageTolerancePercent]);
 
 	// Fetch price preview (fee breakdown) for buy transactions
 	useEffect(() => {
@@ -408,6 +450,43 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 							launchPenalty={launchPenalty}
 						/>
 					)}
+					{amountValid && (
+						<div className="mt-3 border-t border-white/10 pt-3">
+							<SlippageToleranceSelector
+								value={slippageTolerancePercent}
+								onChange={setSlippageTolerancePercent}
+								disabled={isSubmitting}
+							/>
+							{slippageBounds && (
+								<p
+									className="mt-2 text-[0.7rem] text-white/45"
+									data-testid="trade-dialog-slippage-bound"
+								>
+									{side === 'buy'
+										? slippageBounds.maxPriceStroops != null && (
+												<>
+													Max price:{' '}
+													<span className="font-semibold text-white/70 tabular-nums">
+														{formatDisplayKeyPrice(
+															slippageBounds.maxPriceStroops
+														)}
+													</span>
+												</>
+											)
+										: slippageBounds.minPriceStroops != null && (
+												<>
+													Min price:{' '}
+													<span className="font-semibold text-white/70 tabular-nums">
+														{formatDisplayKeyPrice(
+															slippageBounds.minPriceStroops
+														)}
+													</span>
+												</>
+											)}
+								</p>
+							)}
+						</div>
+					)}
 				</div>
 
 				{/*
@@ -432,7 +511,9 @@ const TradeDialog: React.FC<TradeDialogProps> = ({
 					</Button>
 					<Button
 						type="button"
-						onClick={() => onConfirm(parsedAmount, pricePreview)}
+						onClick={() =>
+							onConfirm(parsedAmount, pricePreview, slippageBounds)
+						}
 						disabled={
 							!amountValid ||
 							isSubmitting ||
