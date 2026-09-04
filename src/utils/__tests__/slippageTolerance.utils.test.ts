@@ -123,7 +123,9 @@ describe('slippageTolerance.utils', () => {
 			expect(computeSlippageBounds('buy', null, 1).maxPriceStroops).toBeNull();
 			expect(computeSlippageBounds('sell', undefined, 1).minPriceStroops).toBeNull();
 		});
-import { describe, expect, it } from 'vitest';
+	});
+});
+
 import {
 	computeSlippagePriceBounds,
 	validateSlippageTolerance,
