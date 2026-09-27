@@ -63,11 +63,23 @@ export const routes = [
 				element: <CreatorDashboardPage />,
 			},
 			{
+				path: '/creator/:id/bundles',
+				element: <BundleManagementPage />,
+			},
+			{
+				path: '/creators/:id/bundles',
+				element: <BundleManagementPage />,
+			},
+			{
 				path: '/notifications',
 				element: <NotificationsPage />,
 			},
 			{
 				path: '/profile',
+				element: <ProfilePage />,
+			},
+			{
+				path: '/profile/:wallet',
 				element: <ProfilePage />,
 			},
 			{
@@ -93,6 +105,14 @@ export const routes = [
 			{
 				path: '/create-key',
 				element: <CreateCreatorKeyPage />,
+			},
+			{
+				path: '/swap/create',
+				element: <AtomicSwapCreatePage />,
+			},
+			{
+				path: '/swap/:proposalId',
+				element: <AtomicSwapProposalPage />,
 			},
 			{
 				path: '/admin/dashboard',
