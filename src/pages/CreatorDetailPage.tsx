@@ -9,7 +9,7 @@ import CreatorProfileInfoGrid from '@/components/common/CreatorProfileInfoGrid';
 import CreatorActivityFeed from '@/components/common/CreatorActivityFeed';
 import CreatorProfileStaleIndicator from '@/components/common/CreatorProfileStaleIndicator';
 import CreatorProfileStatRow from '@/components/common/CreatorProfileStatRow';
-import { BondingCurveChart } from '@/components/common/BondingCurveChart';
+import BondingCurveChart from '@/components/common/BondingCurveChart';
 import KeySimulationTool from '@/components/common/KeySimulationTool';
 import BuyCooldownCountdown from '@/components/common/BuyCooldownCountdown';
 import KeyHolderList from '@/components/common/KeyHolderList';
@@ -49,8 +49,11 @@ import Skeleton from '@/components/ui/skeleton';
 import { Tooltip } from '@/components/ui/tooltip';
 import GraduatedCurveMilestoneChart from '@/components/common/GraduatedCurveMilestoneChart';
 import KeyDeprecationBanner from '@/components/common/KeyDeprecationBanner';
+import MergeProposalBanner from '@/components/common/MergeProposalBanner';
 import KeyBuybackModal from '@/components/common/KeyBuybackModal';
 import type { KeyBuybackReceipt } from '@/hooks/useKeyBuyback';
+import { usePerformanceBond } from '@/hooks/usePerformanceBond';
+import PerformanceBondPanel from '@/components/common/PerformanceBondPanel';
 
 function CreatorDetailPageContent() {
 	usePurchaseConfetti();
@@ -129,6 +132,15 @@ function CreatorDetailPageContent() {
 		source: oracleSource,
 		isLoading: isOracleLoading,
 	} = useKeyOraclePrice(id || '', { spotPriceStroops });
+
+	// Performance bond status for creator key protection (#975)
+	const {
+		data: performanceBondData,
+		isLoading: isPerformanceBondLoading,
+		isError: isPerformanceBondError,
+	} = usePerformanceBond(id || '');
+	const performanceBond =
+		performanceBondData ?? creator?.performanceBond ?? null;
 
 	// Track stale data indicator
 	const { shouldShowBadge, handleRefetch } = useCreatorProfileStaleIndicator(
@@ -291,6 +303,12 @@ function CreatorDetailPageContent() {
 						recentSettlement={recentSettlement}
 					/>
 				)}
+				{/* Merge proposal voting for source key holders (#983) */}
+				<MergeProposalBanner
+					sourceKeyId={id || ''}
+					holdingsCount={holdingsCount}
+					isConnected={Boolean(userAddress)}
+				/>
 				<div className="flex items-start gap-3">
 					<div className="min-w-0 flex-1">
 						<CreatorProfileHeader
@@ -329,6 +347,12 @@ function CreatorDetailPageContent() {
 					stats={keyStats}
 					isLoading={isKeyStatsLoading}
 					isError={isKeyStatsError}
+				/>
+				{/* Performance Bond Status Panel (#975) */}
+				<PerformanceBondPanel
+					bond={performanceBond}
+					isLoading={isPerformanceBondLoading}
+					isError={isPerformanceBondError}
 				/>
 				{/* Deprecation Notice and Buy Action on Key Detail Page */}
 				{isKeyDeprecated(creator) && (
