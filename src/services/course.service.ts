@@ -94,6 +94,16 @@ export interface Course {
 	deprecationReason?: string | null;
 	/** Performance bond status for creator key protection (#975). */
 	performanceBond?: PerformanceBond | null;
+	/** Whether the early access whitelist gate is enabled for this creator key (#1031). */
+	isWhitelistEnabled?: boolean;
+	whitelistEnabled?: boolean;
+	/** Approved wallet addresses on the early access whitelist (#1031). */
+	whitelist?: WhitelistEntry[];
+}
+
+export interface WhitelistEntry {
+	walletAddress: string;
+	addedAt: string;
 }
 
 export interface CurveMilestone {

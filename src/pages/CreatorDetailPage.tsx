@@ -54,6 +54,7 @@ import KeyBuybackModal from '@/components/common/KeyBuybackModal';
 import type { KeyBuybackReceipt } from '@/hooks/useKeyBuyback';
 import { usePerformanceBond } from '@/hooks/usePerformanceBond';
 import PerformanceBondPanel from '@/components/common/PerformanceBondPanel';
+import WhitelistStatusBadge from '@/components/common/WhitelistStatusBadge';
 
 function CreatorDetailPageContent() {
 	usePurchaseConfetti();
@@ -143,6 +144,21 @@ function CreatorDetailPageContent() {
 	} = usePerformanceBond(id || '');
 	const performanceBond =
 		performanceBondData ?? creator?.performanceBond ?? null;
+
+	// Whitelist gate check for early access keys (#1031)
+	const isWhitelistGateActive = Boolean(
+		creator?.isWhitelistEnabled ?? creator?.whitelistEnabled ?? false
+	);
+	const isUserWhitelisted = userAddress
+		? Boolean(
+				(creator?.whitelist ?? []).some(
+					w => w.walletAddress.toUpperCase() === userAddress.toUpperCase()
+				) ||
+				(creator?.instructorId &&
+					creator.instructorId.toUpperCase() === userAddress.toUpperCase())
+		  )
+		: false;
+	const isLockedOut = isWhitelistGateActive && !isUserWhitelisted;
 
 	// Track stale data indicator
 	const { shouldShowBadge, handleRefetch } = useCreatorProfileStaleIndicator(
@@ -366,12 +382,17 @@ function CreatorDetailPageContent() {
 				)}
 				<div className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
 					<div>
-						<p className="text-xs font-semibold uppercase tracking-wider text-white/55">
-							Key Purchase
-						</p>
+						<div className="flex items-center gap-2">
+							<p className="text-xs font-semibold uppercase tracking-wider text-white/55">
+								Key Purchase
+							</p>
+							{isLockedOut && <WhitelistStatusBadge />}
+						</div>
 						<p className="mt-0.5 text-sm text-white/80">
 							{isKeyDeprecated(creator)
 								? 'Key is deprecated. New buys are disabled.'
+								: isLockedOut
+								? 'Early access is restricted to approved whitelisted wallets.'
 								: 'Purchase keys for this creator.'}
 						</p>
 						{/* Configurable bid-ask spread between buy and sell price (#951) */}
@@ -393,14 +414,16 @@ function CreatorDetailPageContent() {
 						/>
 					</div>
 					<Button
-						disabled={isKeyDeprecated(creator)}
+						disabled={isKeyDeprecated(creator) || isLockedOut}
 						data-testid="key-detail-buy-button"
 						onClick={() => setBuyDialogOpen(true)}
-						variant={isKeyDeprecated(creator) ? 'outline' : 'default'}
+						variant={isKeyDeprecated(creator) || isLockedOut ? 'outline' : 'default'}
 						className="rounded-xl font-bold"
 					>
 						{isKeyDeprecated(creator)
 							? 'Buy Disabled (Deprecated)'
+							: isLockedOut
+							? 'Buy Locked (Whitelist Only)'
 							: 'Buy Key'}
 					</Button>
 				</div>
