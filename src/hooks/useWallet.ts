@@ -749,6 +749,7 @@ export function useBatchTradeMutation(address?: string) {
 					quantity: order.quantity,
 					success: true as const,
 					transactionHash,
+					error: undefined as string | undefined,
 				})),
 			};
 		},
