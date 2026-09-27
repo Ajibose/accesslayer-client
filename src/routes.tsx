@@ -16,6 +16,9 @@ import ProposalDetailPage from './pages/ProposalDetailPage';
 import ReferralDashboardPage from './pages/ReferralDashboardPage';
 import CreateCreatorKeyPage from './pages/CreateCreatorKeyPage';
 import RevenueDistributionHistoryPage from './pages/RevenueDistributionHistoryPage';
+import BundleManagementPage from './pages/BundleManagementPage';
+import AtomicSwapCreatePage from './pages/AtomicSwapCreatePage';
+import AtomicSwapProposalPage from './pages/AtomicSwapProposalPage';
 
 export const routes = [
 	{
