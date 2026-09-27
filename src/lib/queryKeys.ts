@@ -48,6 +48,8 @@ export const queryKeys = {
 			['creators', creatorId, 'oracle-price'] as const,
 		performanceBond: (creatorId: string) =>
 			['creators', creatorId, 'performance-bond'] as const,
+		tradeCooldown: (creatorId: string) =>
+			['creators', creatorId, 'trade-cooldown'] as const,
 		keyDeployment: (keyId: string) =>
 			['creators', 'deployment', keyId] as const,
 		discovery: {
