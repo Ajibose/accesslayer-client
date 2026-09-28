@@ -63,6 +63,13 @@ export const queryKeys = {
 			['wallet', address, 'tradeHistory'] as const,
 		stakingPositions: (address: string) =>
 			['wallet', address, 'stakingPositions'] as const,
+		xlmBalance: (address: string) =>
+			['wallet', address, 'xlmBalance'] as const,
+	},
+	lp: {
+		all: () => ['lp'] as const,
+		positions: (wallet: string) => ['lp', 'positions', wallet] as const,
+		pool: (keyId: string) => ['lp', 'pool', keyId] as const,
 	},
 	notifications: {
 		all: () => ['notifications'] as const,
