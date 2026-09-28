@@ -50,6 +50,7 @@ import { useKeyConfig } from '@/hooks/useKeyConfig';
 import KeyStatsPanel from '@/components/common/KeyStatsPanel';
 import Skeleton from '@/components/ui/skeleton';
 import { Tooltip } from '@/components/ui/tooltip';
+import GraduatedCurveMilestoneChart from '@/components/common/GraduatedCurveMilestoneChart';
 import KeyDeprecationBanner from '@/components/common/KeyDeprecationBanner';
 import MergeProposalBanner from '@/components/common/MergeProposalBanner';
 import KeyBuybackModal from '@/components/common/KeyBuybackModal';
@@ -527,12 +528,16 @@ function CreatorDetailPageContent() {
 					<h2 className="font-grotesque text-xl font-black tracking-tight text-white mb-6">
 						Price Curve
 					</h2>
-					<BondingCurveChart
-						data={chartData}
-						currentSupply={creator.creatorShareSupply ?? 100}
-						height={300}
-					/>
+				<BondingCurveChart
+					data={chartData}
+					currentSupply={creator.creatorShareSupply ?? 100}
+					height={300}
+				/>
 				</div>
+				<GraduatedCurveMilestoneChart
+					keyId={creator.id}
+					currentSupply={creator.creatorShareSupply ?? 0}
+				/>
 				{/* Buy Simulation Tool */}
 				<KeySimulationTool
 					currentSupply={creator.creatorShareSupply ?? 100}
