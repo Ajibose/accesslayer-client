@@ -93,6 +93,8 @@ export const queryKeys = {
 		oracleCallers: () => ['admin', 'oracle', 'callers'] as const,
 		multiSigPending: () => ['admin', 'multisig', 'pending'] as const,
 		multiSigHistory: () => ['admin', 'multisig', 'history'] as const,
+		aclWhitelist: () => ['admin', 'acl', 'whitelist'] as const,
+		aclHistory: () => ['admin', 'acl', 'history'] as const,
 	},
 	governance: {
 		all: () => ['governance'] as const,
