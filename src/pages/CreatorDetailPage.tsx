@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate, useParams } from 'react-router';
 import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { useCreatorDetail } from '@/hooks/useCreators';
+import { useCreatorDetail, usePriceHistory } from '@/hooks/useCreators';
 import { useRecentlyViewed } from '@/hooks/useRecentlyViewed';
 import { useCreatorProfileStaleIndicator } from '@/hooks/useCreatorProfileStaleIndicator';
 import CreatorBreadcrumb from '@/components/common/CreatorBreadcrumb';
@@ -42,6 +42,8 @@ import { useProfileStore } from '@/hooks/useProfileStore';
 import { useWalletHoldings, useTradeMutation } from '@/hooks/useWallet';
 import CoCreatorSection from '@/components/creator/CoCreatorSection';
 import ShareTwitterButton from '@/components/common/ShareTwitterButton';
+import { PriceHistoryChart } from '@/components/common/PriceHistoryChart';
+import type { PriceHistoryInterval } from '@/services/course.service';
 import TradeDialog from '@/components/common/TradeDialog';
 import SpreadIndicator from '@/components/common/SpreadIndicator';
 import OraclePriceIndicator from '@/components/common/OraclePriceIndicator';
@@ -57,12 +59,14 @@ import { useKeyConfig } from '@/hooks/useKeyConfig';
 import KeyStatsPanel from '@/components/common/KeyStatsPanel';
 import Skeleton from '@/components/ui/skeleton';
 import { Tooltip } from '@/components/ui/tooltip';
+import GraduatedCurveMilestoneChart from '@/components/common/GraduatedCurveMilestoneChart';
 import KeyDeprecationBanner from '@/components/common/KeyDeprecationBanner';
 import MergeProposalBanner from '@/components/common/MergeProposalBanner';
 import KeyBuybackModal from '@/components/common/KeyBuybackModal';
 import type { KeyBuybackReceipt } from '@/hooks/useKeyBuyback';
 import { usePerformanceBond } from '@/hooks/usePerformanceBond';
 import PerformanceBondPanel from '@/components/common/PerformanceBondPanel';
+import WhitelistStatusBadge from '@/components/common/WhitelistStatusBadge';
 
 function CreatorDetailPageContent() {
 	usePurchaseConfetti();
@@ -81,6 +85,11 @@ function CreatorDetailPageContent() {
 		isFetching,
 		refetch,
 	} = useCreatorDetail(id || '');
+
+	const [interval, setInterval] = useState<PriceHistoryInterval>('24h');
+	const { data: priceHistory, isLoading: isPriceHistoryLoading } =
+		usePriceHistory(id || '', interval);
+
 	useNavigationTiming('creator_profile');
 	useDocumentTitle(creator ? `${creator.title} — AccessLayer` : null);
 
@@ -152,6 +161,21 @@ function CreatorDetailPageContent() {
 	} = usePerformanceBond(id || '');
 	const performanceBond =
 		performanceBondData ?? creator?.performanceBond ?? null;
+
+	// Whitelist gate check for early access keys (#1031)
+	const isWhitelistGateActive = Boolean(
+		creator?.isWhitelistEnabled ?? creator?.whitelistEnabled ?? false
+	);
+	const isUserWhitelisted = userAddress
+		? Boolean(
+				(creator?.whitelist ?? []).some(
+					w => w.walletAddress.toUpperCase() === userAddress.toUpperCase()
+				) ||
+				(creator?.instructorId &&
+					creator.instructorId.toUpperCase() === userAddress.toUpperCase())
+		  )
+		: false;
+	const isLockedOut = isWhitelistGateActive && !isUserWhitelisted;
 
 	// Track stale data indicator
 	const { shouldShowBadge, handleRefetch } = useCreatorProfileStaleIndicator(
@@ -304,7 +328,6 @@ function CreatorDetailPageContent() {
 				recentFeeInflow: creator.recentFeeInflow,
 			}
 		: {
-				// Demo values until the key detail API returns staking pool stats.
 				stakingPoolBalance: 4820,
 				totalStaked: creator.creatorShareSupply
 					? Math.floor(creator.creatorShareSupply / 4)
@@ -365,6 +388,15 @@ function CreatorDetailPageContent() {
 						className="mt-3 shrink-0"
 					/>
 				</div>
+
+				{/* Historical Price Chart */}
+				<PriceHistoryChart
+					data={priceHistory}
+					interval={interval}
+					isLoading={isPriceHistoryLoading}
+					onIntervalChange={setInterval}
+				/>
+
 				{/* 4 Stat Cards */}
 				<div data-testid="creator-stat-cards">
 					<CreatorProfileStatRow items={statItems} />
@@ -391,12 +423,17 @@ function CreatorDetailPageContent() {
 				)}
 				<div className="flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-white/[0.03] px-5 py-4">
 					<div>
-						<p className="text-xs font-semibold uppercase tracking-wider text-white/55">
-							Key Purchase
-						</p>
+						<div className="flex items-center gap-2">
+							<p className="text-xs font-semibold uppercase tracking-wider text-white/55">
+								Key Purchase
+							</p>
+							{isLockedOut && <WhitelistStatusBadge />}
+						</div>
 						<p className="mt-0.5 text-sm text-white/80">
 							{isKeyDeprecated(creator)
 								? 'Key is deprecated. New buys are disabled.'
+								: isLockedOut
+								? 'Early access is restricted to approved whitelisted wallets.'
 								: 'Purchase keys for this creator.'}
 						</p>
 						{/* Configurable bid-ask spread between buy and sell price (#951) */}
@@ -514,7 +551,8 @@ function CreatorDetailPageContent() {
 				) : null}
 				{/* Staking Rewards */}
 				<StakingRewardsSection {...stakingStats} isLoading={isLoading} />
-				{/* Price Chart */}
+
+				{/* Price Curve Chart */}
 				<div
 					className="rounded-[2rem] border border-white/10 bg-white/[0.02] p-6 shadow-2xl backdrop-blur-md md:p-8"
 					data-testid="creator-chart-container"
@@ -522,12 +560,16 @@ function CreatorDetailPageContent() {
 					<h2 className="font-grotesque text-xl font-black tracking-tight text-white mb-6">
 						Price Curve
 					</h2>
-					<BondingCurveChart
-						data={chartData}
-						currentSupply={creator.creatorShareSupply ?? 100}
-						height={300}
-					/>
+				<BondingCurveChart
+					data={chartData}
+					currentSupply={creator.creatorShareSupply ?? 100}
+					height={300}
+				/>
 				</div>
+				<GraduatedCurveMilestoneChart
+					keyId={creator.id}
+					currentSupply={creator.creatorShareSupply ?? 0}
+				/>
 				{/* Buy Simulation Tool */}
 				<KeySimulationTool
 					currentSupply={creator.creatorShareSupply ?? 100}
@@ -618,6 +660,7 @@ function CreatorDetailPageContent() {
 						keyPriceStroops={resolveCreatorKeyPriceStroops(creator)}
 						currentSupply={creator.creatorShareSupply}
 						maxBuyQuantity={creator.maxBuyQuantity}
+						holdingCap={creator.holdingCap ?? creator.maxHoldingCap}
 						launchPenaltyBps={creator.launchPenaltyBps}
 						keyConfig={keyConfig}
 						isKeyConfigLoading={isKeyConfigLoading}

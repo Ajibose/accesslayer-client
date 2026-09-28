@@ -29,6 +29,9 @@ export interface Course {
 	protocolFeeBps?: number;
 	/** Max keys that can be bought in a single transaction; null means no limit. */
 	maxBuyQuantity?: number | null;
+	/** Maximum holding cap per wallet configured by creator (#1015); null or undefined means unlimited. */
+	holdingCap?: number | null;
+	maxHoldingCap?: number | null;
 	/** Last up to 7 price history points in stroops, oldest to newest. */
 	priceHistory?: number[];
 	holderCount?: number;
@@ -106,6 +109,16 @@ export interface Course {
 	deprecationReason?: string | null;
 	/** Performance bond status for creator key protection (#975). */
 	performanceBond?: PerformanceBond | null;
+	/** Whether the early access whitelist gate is enabled for this creator key (#1031). */
+	isWhitelistEnabled?: boolean;
+	whitelistEnabled?: boolean;
+	/** Approved wallet addresses on the early access whitelist (#1031). */
+	whitelist?: WhitelistEntry[];
+}
+
+export interface WhitelistEntry {
+	walletAddress: string;
+	addedAt: string;
 }
 
 export interface CurveMilestone {
@@ -162,6 +175,9 @@ export interface KeyConfig {
 	spreadStroops?: number | null;
 	/** Spread expressed in basis points of the buy price, when reported. */
 	spreadBps?: number | null;
+	/** Maximum holding cap configured for this key (#1015); null means unlimited. */
+	holdingCap?: number | null;
+	maxHoldingCap?: number | null;
 }
 
 /**
@@ -262,6 +278,13 @@ export interface GetCoursesParams {
 	min_price?: number;
 	max_price?: number;
 	sort?: CourseSortOption;
+}
+
+export type PriceHistoryInterval = '1h' | '24h' | '7d';
+
+export interface PriceHistoryPoint {
+	timestamp: string;
+	price: number;
 }
 
 /** Raw envelope shape for a paginated /courses response. */
@@ -424,6 +447,23 @@ class CourseService extends BaseApiService {
 			const data = response.data.data;
 			cacheManager.set(cacheKey, data, this.PROFILE_CACHE_TTL);
 			return data;
+		} catch (error) {
+			throw this.handleError(error);
+		}
+	}
+
+	// Get bonding curve price history - GET /keys/:keyId/price-history
+	async getPriceHistory(
+		keyId: string,
+		interval: PriceHistoryInterval
+	): Promise<PriceHistoryPoint[]> {
+		try {
+			const response = await this.api.get<APIResponse<PriceHistoryPoint[]>>(
+				`/keys/${keyId}/price-history`,
+				{ params: { interval } }
+			);
+
+			return response.data.data;
 		} catch (error) {
 			throw this.handleError(error);
 		}
